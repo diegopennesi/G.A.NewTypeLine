@@ -11,7 +11,7 @@ export function InviteJoinPage() {
 
   useEffect(() => {
     if (!user) return
-    void joinLobby(gameCode, user.uid)
+    void joinLobby(gameCode, user.uid, user.displayName || user.email?.split('@')[0] || 'Giocatore 2')
       .then((code) => navigate(`/games/${code}`, { replace: true }))
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Impossibile entrare nella partita.'))
   }, [gameCode, navigate, user])

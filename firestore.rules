@@ -15,15 +15,15 @@ service cloud.firestore {
     function isAuthenticated() { return request.auth != null; }
     function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
     function isParticipant(data) { return isAuthenticated() && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid); }
-    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']); }
+    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']); }
     function isValidUid(value) { return value is string && value.size() > 0 && value.size() <= 128; }
     function isLobbyCode(code) { return code is string && code.size() == 8 && code.matches('^[A-Z0-9]+$'); }
     function isValidGame(data) {
       return hasRequiredFields(data) &&
-        data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']) &&
         isLobbyCode(data.code) && data.status in ['WAITING', 'SETUP'] &&
-        isValidUid(data.ownerId) && data.playerOneId == data.ownerId &&
-        (data.playerTwoId == null || isValidUid(data.playerTwoId)) &&
+        isValidUid(data.ownerId) && data.playerOneId == data.ownerId && data.playerOneName is string && data.playerOneName.size() > 0 && data.playerOneName.size() <= 64 &&
+        ((data.playerTwoId == null && data.playerTwoName == null) || (isValidUid(data.playerTwoId) && data.playerTwoName is string && data.playerTwoName.size() > 0 && data.playerTwoName.size() <= 64)) &&
         data.createdAt is timestamp && data.updatedAt is timestamp;
     }
     match /games/{gameCode} {
@@ -33,15 +33,14 @@ service cloud.firestore {
       allow list: if isParticipant(resource.data);
       allow create: if isOwner(request.resource.data.ownerId) &&
         request.resource.data.code == gameCode && request.resource.data.playerOneId == request.auth.uid &&
-        request.resource.data.playerTwoId == null && request.resource.data.status == 'WAITING' &&
+        request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' &&
         request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time &&
         isValidGame(request.resource.data);
-      // The only allowed update is an authenticated user becoming Player 2.
       allow update: if isAuthenticated() && resource.data.status == 'WAITING' && resource.data.playerTwoId == null &&
         request.resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'status', 'updatedAt']) &&
-        request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
-      allow delete: if false;
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data)
+        || isAuthenticated() && resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.playerOneId == resource.data.playerOneId && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.playerOneId == request.auth.uid && resource.data.playerTwoId == null;
     }
   }
 }

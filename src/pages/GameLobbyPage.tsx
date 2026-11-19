@@ -3,14 +3,17 @@ import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import type { Game } from '../models/game'
 import { useAuth } from '../features/auth/useAuth'
-import { subscribeToLobby } from '../services/lobbyService'
+import { leaveLobby, subscribeToLobby } from '../services/lobbyService'
+import { useNavigate } from 'react-router-dom'
 import './GameLobbyPage.css'
 
 export function GameLobbyPage() {
   const { gameCode = '' } = useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [game, setGame] = useState<Game | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
 
   useEffect(() => subscribeToLobby(gameCode, setGame, (reason) => setError(reason.message)), [gameCode])
 
@@ -34,7 +37,8 @@ export function GameLobbyPage() {
       <div><h2 id="invite-title">Invita il Giocatore 2</h2><p>Può scansionare questo QR dal cellulare oppure aprire il link condivisibile.</p><a className="invite-link" href={inviteUrl}>{inviteUrl}</a></div>
       <div className="qr-code"><QRCodeSVG value={inviteUrl} size={176} level="M" includeMargin title={`QR per entrare nella partita ${game.code}`} /></div>
     </section>}
-    <div className="player-list"><p><b>Giocatore 1</b> {isPlayerOne ? 'Tu' : 'Giocatore connesso'}</p><p><b>Giocatore 2</b> {game.playerTwoId ? (isPlayerTwo ? 'Tu' : 'Giocatore connesso') : 'In attesa…'}</p></div>
+    <div className="player-list"><p><b>Giocatore 1</b> {isPlayerOne ? 'Tu' : game.playerOneName}</p><p><b>Giocatore 2</b> {game.playerTwoId ? (isPlayerTwo ? 'Tu' : game.playerTwoName) : 'In attesa…'}</p></div>
+    <button className="button secondary" disabled={leaving} onClick={() => { if (!user) return; setLeaving(true); void leaveLobby(game.code, user.uid).then(() => navigate('/', { replace: true })).catch(() => { setLeaving(false); setError('Impossibile uscire dalla lobby.') }) }}>{leaving ? 'Uscita…' : 'Esci dalla lobby'}</button>
     <Link className="button secondary inline-button" to="/">Torna alla dashboard</Link>
   </section>
 }
