@@ -2,33 +2,45 @@
 // Assumed Data Model
 // ===============================================================
 // Collection: games
-// Document ID: an 8-character lobby code
-// Fields: code, status, ownerId, redPlayerId, bluePlayerId, createdAt, updatedAt
-// A creator is the Red player. A signed-in user can join only a WAITING game
-// as Blue. Game actions and Timeline fields are deliberately absent in Sprint 2.
+// Document ID: an 8-character lobby code.
+// Fields: code (immutable string), status (WAITING or SETUP), ownerId and
+// playerOneId (immutable creator UID), playerTwoId (nullable UID, set once),
+// createdAt (immutable timestamp), updatedAt (server timestamp).
+// Player colours are intentionally absent: they are assigned in a future game
+// setup flow, after both players have joined.
 // ===============================================================
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthenticated() { return request.auth != null; }
     function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-    function isParticipant(data) { return isAuthenticated() && (data.redPlayerId == request.auth.uid || data.bluePlayerId == request.auth.uid); }
-    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'redPlayerId', 'bluePlayerId', 'createdAt', 'updatedAt']); }
+    function isParticipant(data) { return isAuthenticated() && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid); }
+    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']); }
+    function isValidUid(value) { return value is string && value.size() > 0 && value.size() <= 128; }
     function isLobbyCode(code) { return code is string && code.size() == 8 && code.matches('^[A-Z0-9]+$'); }
     function isValidGame(data) {
       return hasRequiredFields(data) &&
-        data.keys().hasOnly(['code', 'status', 'ownerId', 'redPlayerId', 'bluePlayerId', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) &&
         isLobbyCode(data.code) && data.status in ['WAITING', 'SETUP'] &&
-        data.ownerId is string && data.ownerId.size() > 0 && data.ownerId.size() <= 128 &&
-        data.redPlayerId == data.ownerId &&
-        (data.bluePlayerId == null || (data.bluePlayerId is string && data.bluePlayerId.size() > 0 && data.bluePlayerId.size() <= 128)) &&
+        isValidUid(data.ownerId) && data.playerOneId == data.ownerId &&
+        (data.playerTwoId == null || isValidUid(data.playerTwoId)) &&
         data.createdAt is timestamp && data.updatedAt is timestamp;
     }
     match /games/{gameCode} {
+      // An authenticated invitee may read one waiting lobby to perform the
+      // atomic join transaction. Listing remains participant-only.
       allow get: if isAuthenticated() && (resource.data.status == 'WAITING' || isParticipant(resource.data));
       allow list: if isParticipant(resource.data);
-      allow create: if isOwner(request.resource.data.ownerId) && request.resource.data.code == gameCode && request.resource.data.redPlayerId == request.auth.uid && request.resource.data.bluePlayerId == null && request.resource.data.status == 'WAITING' && isValidGame(request.resource.data) && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
-      allow update: if isAuthenticated() && resource.data.status == 'WAITING' && resource.data.bluePlayerId == null && request.resource.data.bluePlayerId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bluePlayerId', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
+      allow create: if isOwner(request.resource.data.ownerId) &&
+        request.resource.data.code == gameCode && request.resource.data.playerOneId == request.auth.uid &&
+        request.resource.data.playerTwoId == null && request.resource.data.status == 'WAITING' &&
+        request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time &&
+        isValidGame(request.resource.data);
+      // The only allowed update is an authenticated user becoming Player 2.
+      allow update: if isAuthenticated() && resource.data.status == 'WAITING' && resource.data.playerTwoId == null &&
+        request.resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'status', 'updatedAt']) &&
+        request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
       allow delete: if false;
     }
   }

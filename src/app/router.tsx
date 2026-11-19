@@ -6,4 +6,5 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { CreateLobbyPage } from '../pages/CreateLobbyPage'
 import { GameLobbyPage } from '../pages/GameLobbyPage'
 import { JoinLobbyPage } from '../pages/JoinLobbyPage'
-export const router = createBrowserRouter([{ path: '/auth', element: <AuthPage /> }, { element: <ProtectedRoute />, children: [{ element: <AppLayout />, children: [{ path: '/', element: <DashboardPage /> }, { path: '/lobby/create', element: <CreateLobbyPage /> }, { path: '/lobby/join', element: <JoinLobbyPage /> }, { path: '/games/:gameCode', element: <GameLobbyPage /> }] }] }, { path: '*', element: <Navigate to="/" replace /> }])
+import { InviteJoinPage } from '../pages/InviteJoinPage'
+export const router = createBrowserRouter([{ path: '/auth', element: <AuthPage /> }, { element: <ProtectedRoute />, children: [{ element: <AppLayout />, children: [{ path: '/', element: <DashboardPage /> }, { path: '/lobby/create', element: <CreateLobbyPage /> }, { path: '/lobby/join', element: <JoinLobbyPage /> }, { path: '/join/:gameCode', element: <InviteJoinPage /> }, { path: '/games/:gameCode', element: <GameLobbyPage /> }] }] }, { path: '*', element: <Navigate to="/" replace /> }])
