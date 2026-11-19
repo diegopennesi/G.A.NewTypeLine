@@ -6,6 +6,7 @@ on:
 
 jobs:
   deploy:
+    environment: GATypeLine
     runs-on: ubuntu-latest
     permissions:
       contents: read
