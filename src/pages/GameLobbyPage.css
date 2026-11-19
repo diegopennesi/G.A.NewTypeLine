@@ -11,3 +11,4 @@
 .player-list p { margin: 0; }
 .inline-button { display: inline-block; text-decoration: none; }
 @media (max-width: 560px) { .invite-card { grid-template-columns: 1fr; }.qr-code { width: fit-content; }.share-code strong { font-size: 1.45rem; } }
+.squad-picker { margin: 1.5rem 0; }.squad-picker h2 { font-size: 1.2rem; }.unit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }.unit-card { display: grid; gap: .35rem; min-height: 7rem; border: 1px solid #53617f; border-radius: .65rem; padding: .75rem; background: #151c2e; color: #dfe6fa; text-align: left; }.unit-card span { color: #aeb9d3; font-size: .8rem; }.unit-card.selected { border-color: #e4b058; background: #2c2921; }
