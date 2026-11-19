@@ -16,4 +16,12 @@ describe('lobby exit', () => {
     await assertSucceeds(updateDoc(doc(phone, 'games/ABCD2345'), { playerTwoId: null, playerTwoName: null, status: 'WAITING', updatedAt: serverTimestamp() }))
     await assertSucceeds(getDoc(doc(environment.authenticatedContext('pc').firestore(), 'games/ABCD2345')))
   })
+
+  it('lets Player 1 transfer the lobby to Player 2', async () => {
+    const transferGame = { ...game, code: 'WXYZ6789' }
+    await environment.withSecurityRulesDisabled(async (context) => setDoc(doc(context.firestore(), 'games/WXYZ6789'), transferGame))
+    const pc = environment.authenticatedContext('pc').firestore()
+    await assertSucceeds(updateDoc(doc(pc, 'games/WXYZ6789'), { ownerId: 'phone', playerOneId: 'phone', playerOneName: 'Phone', playerTwoId: null, playerTwoName: null, status: 'WAITING', updatedAt: serverTimestamp() }))
+    await assertSucceeds(getDoc(doc(environment.authenticatedContext('phone').firestore(), 'games/WXYZ6789')))
+  })
 })
