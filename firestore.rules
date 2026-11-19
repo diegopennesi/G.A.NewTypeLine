@@ -1,54 +1,57 @@
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-// Collection: games
-// Document ID: an 8-character lobby code.
-// Fields: code (immutable string), status (WAITING or SETUP), ownerId and
-// playerOneId (immutable creator UID), playerTwoId (nullable UID, set once),
-// createdAt (immutable timestamp), updatedAt (server timestamp).
-// Player colours are intentionally absent: they are assigned in a future game
-// setup flow, after both players have joined.
-// ===============================================================
 rules_version = '2';
+// Sprint 3: lobby, squads of 3 or 5 placeholder units, readiness and initial TL.
+// Code/format/createdAt are immutable. Only the departing owner can transfer ownership.
 service cloud.firestore {
-  match /databases/{database}/documents {
-    function isAuthenticated() { return request.auth != null; }
-    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-    function isParticipant(data) { return isAuthenticated() && ((data.keys().hasAll(['playerOneId', 'playerTwoId']) && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid)) || (data.keys().hasAll(['redPlayerId', 'bluePlayerId']) && (data.redPlayerId == request.auth.uid || data.bluePlayerId == request.auth.uid))); }
-    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'matchSize', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']); }
-    function isValidUid(value) { return value is string && value.size() > 0 && value.size() <= 128; }
-    function isLobbyCode(code) { return code is string && code.size() == 8 && code.matches('^[A-Z0-9]+$'); }
-    function isValidGame(data) {
-      return hasRequiredFields(data) &&
-        data.keys().hasOnly(['code', 'matchSize', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']) &&
-        isLobbyCode(data.code) && data.matchSize in ['3v3', '5v5'] && data.status in ['WAITING', 'SETUP'] &&
-        isValidUid(data.ownerId) && data.playerOneId == data.ownerId && data.playerOneName is string && data.playerOneName.size() > 0 && data.playerOneName.size() <= 64 &&
-        ((data.playerTwoId == null && data.playerTwoName == null) || (isValidUid(data.playerTwoId) && data.playerTwoName is string && data.playerTwoName.size() > 0 && data.playerTwoName.size() <= 64)) &&
-        data.createdAt is timestamp && data.updatedAt is timestamp;
-    }
-    match /games/{gameCode} {
-      // Player 2 may only clear their own slot; every other game field is
-      // protected by the narrow affected-key list.
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.playerTwoId && resource.data.status == 'SETUP' && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']);
-      // An authenticated invitee may read one waiting lobby to perform the
-      // atomic join transaction. Listing remains participant-only.
-      allow get: if isAuthenticated() && (resource.data.status == 'WAITING' || isParticipant(resource.data));
-      allow list: if isParticipant(resource.data);
-      allow create: if isOwner(request.resource.data.ownerId) &&
-        request.resource.data.code == gameCode && request.resource.data.playerOneId == request.auth.uid &&
-        request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' &&
-        request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time &&
-        isValidGame(request.resource.data);
-      allow update: if isAuthenticated() && resource.data.status == 'WAITING' && resource.data.playerTwoId == null &&
-        request.resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data)
-        || isAuthenticated() && resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.playerOneId == resource.data.playerOneId && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']);
-      // A departing Player 1 hands the same code and lobby to Player 2.
-      allow update: if isAuthenticated() && resource.data.status == 'SETUP' && resource.data.playerOneId == request.auth.uid && resource.data.playerTwoId != null && request.resource.data.ownerId == resource.data.playerTwoId && request.resource.data.playerOneId == resource.data.playerTwoId && request.resource.data.playerOneName == resource.data.playerTwoName && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
-      // Permit a Player 2 from the immediately preceding schema to leave,
-      // without introducing the newer display-name fields into that document.
-      allow update: if isAuthenticated() && resource.data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) && resource.data.playerTwoId == request.auth.uid && resource.data.status == 'SETUP' && request.resource.data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) && request.resource.data.playerTwoId == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time;
-      allow delete: if isAuthenticated() && resource.data.playerOneId == request.auth.uid && resource.data.playerTwoId == null;
-    }
+ match /databases/{database}/documents {
+  function signed() { return request.auth != null; }
+  function participant(d) { return signed() && request.auth.uid in [d.playerOneId, d.playerTwoId]; }
+  function squad(s, n) {
+   return s is list && s.size() <= n && s.toSet().size() == s.size() &&
+    s.hasOnly(['placeholder-1','placeholder-2','placeholder-3','placeholder-4','placeholder-5','placeholder-6','placeholder-7','placeholder-8','placeholder-9','placeholder-10','placeholder-11','placeholder-12','placeholder-13','placeholder-14','placeholder-15','placeholder-16','placeholder-17','placeholder-18']);
   }
+  function valid(d) {
+   let n = d.matchSize == '3v3' ? 3 : 5;
+   return d.keys().hasAll(['code','matchSize','status','ownerId','playerOneId','playerOneName','playerTwoId','playerTwoName','playerOneTeam','playerTwoTeam','playerOneReady','playerTwoReady','playerOneSquad','playerTwoSquad','createdAt','updatedAt']) &&
+    d.keys().hasOnly(['code','matchSize','status','ownerId','playerOneId','playerOneName','playerTwoId','playerTwoName','playerOneTeam','playerTwoTeam','playerOneReady','playerTwoReady','playerOneSquad','playerTwoSquad','createdAt','updatedAt']) &&
+    d.code is string && d.code.matches('^[A-Z0-9]{8}$') &&
+    d.matchSize in ['3v3','5v5'] && d.status in ['WAITING','SETUP','ACTIVE'] &&
+    d.ownerId == d.playerOneId && d.playerOneId is string && d.playerOneId.size() > 0 && d.playerOneId.size() <= 128 &&
+    d.playerOneName is string && d.playerOneName.size() > 0 && d.playerOneName.size() <= 64 &&
+    (d.playerTwoId == null || (d.playerTwoId is string && d.playerTwoId.size() > 0 && d.playerTwoId.size() <= 128 && d.playerTwoId != d.playerOneId)) &&
+    (d.playerTwoName == null || (d.playerTwoName is string && d.playerTwoName.size() > 0 && d.playerTwoName.size() <= 64)) &&
+    d.playerOneReady is bool && d.playerTwoReady is bool &&
+    squad(d.playerOneSquad,n) && squad(d.playerTwoSquad,n) &&
+    (!d.playerOneReady || d.playerOneSquad.size() == n) && (!d.playerTwoReady || d.playerTwoSquad.size() == n) &&
+    d.createdAt is timestamp && d.updatedAt is timestamp &&
+    ((d.status == 'WAITING' && d.playerTwoId == null && d.playerTwoName == null && d.playerOneTeam == null && d.playerTwoTeam == null && !d.playerOneReady && !d.playerTwoReady) ||
+     (d.status in ['SETUP','ACTIVE'] && d.playerTwoId != null && d.playerTwoName != null &&
+      d.playerOneTeam in ['RED','BLUE'] && d.playerTwoTeam in ['RED','BLUE'] && d.playerOneTeam != d.playerTwoTeam &&
+      (d.status != 'ACTIVE' || (d.playerOneReady && d.playerTwoReady))));
+  }
+  match /games/{code} {
+   allow get: if signed() && (resource.data.status == 'WAITING' || participant(resource.data));
+   allow list: if participant(resource.data);
+   allow create: if signed() && valid(request.resource.data) && request.resource.data.code == code &&
+    request.resource.data.ownerId == request.auth.uid && request.resource.data.status == 'WAITING' &&
+    request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+   allow update: if signed() && valid(request.resource.data) && request.resource.data.updatedAt == request.time &&
+    request.resource.data.code == resource.data.code && request.resource.data.matchSize == resource.data.matchSize &&
+    request.resource.data.createdAt == resource.data.createdAt && (
+     (resource.data.status == 'WAITING' && request.resource.data.status == 'SETUP' &&
+      request.resource.data.playerTwoId == request.auth.uid &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId','playerTwoName','playerOneTeam','playerTwoTeam','updatedAt','status'])) ||
+     (resource.data.status == 'SETUP' && request.auth.uid == resource.data.playerOneId &&
+      (!resource.data.playerOneReady || request.resource.data.playerOneSquad == resource.data.playerOneSquad) && request.resource.data.playerOneReady &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerOneReady','playerOneSquad','status','updatedAt'])) ||
+     (resource.data.status == 'SETUP' && request.auth.uid == resource.data.playerTwoId &&
+      (!resource.data.playerTwoReady || request.resource.data.playerTwoSquad == resource.data.playerTwoSquad) && request.resource.data.playerTwoReady &&
+      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoReady','playerTwoSquad','status','updatedAt'])) ||
+     (participant(resource.data) && resource.data.status == 'SETUP' && request.resource.data.status == 'WAITING' &&
+      request.resource.data.playerOneId == (request.auth.uid == resource.data.playerOneId ? resource.data.playerTwoId : resource.data.playerOneId) &&
+      request.resource.data.playerOneName == (request.auth.uid == resource.data.playerOneId ? resource.data.playerTwoName : resource.data.playerOneName) &&
+      request.resource.data.playerOneSquad.size() == 0 && request.resource.data.playerTwoSquad.size() == 0)
+    );
+   allow delete: if signed() && resource.data.ownerId == request.auth.uid && resource.data.status == 'WAITING';
+  }
+ }
 }
