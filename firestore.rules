@@ -27,6 +27,9 @@ service cloud.firestore {
         data.createdAt is timestamp && data.updatedAt is timestamp;
     }
     match /games/{gameCode} {
+      // Player 2 may only clear their own slot; every other game field is
+      // protected by the narrow affected-key list.
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.playerTwoId && resource.data.status == 'SETUP' && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']);
       // An authenticated invitee may read one waiting lobby to perform the
       // atomic join transaction. Listing remains participant-only.
       allow get: if isAuthenticated() && (resource.data.status == 'WAITING' || isParticipant(resource.data));
@@ -39,7 +42,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && resource.data.status == 'WAITING' && resource.data.playerTwoId == null &&
         request.resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data)
-        || isAuthenticated() && resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.playerOneId == resource.data.playerOneId && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
+        || isAuthenticated() && resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.playerOneId == resource.data.playerOneId && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']);
       // A departing Player 1 hands the same code and lobby to Player 2.
       allow update: if isAuthenticated() && resource.data.status == 'SETUP' && resource.data.playerOneId == request.auth.uid && resource.data.playerTwoId != null && request.resource.data.ownerId == resource.data.playerTwoId && request.resource.data.playerOneId == resource.data.playerTwoId && request.resource.data.playerOneName == resource.data.playerTwoName && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
       // Permit a Player 2 from the immediately preceding schema to leave,
