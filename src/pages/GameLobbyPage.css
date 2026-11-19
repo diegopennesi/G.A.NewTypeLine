@@ -1,0 +1,13 @@
+.lobby-page { max-width: 46rem; }
+.share-code { display: grid; gap: .35rem; width: fit-content; margin-top: 1.5rem; border: 1px solid #53617f; border-radius: .75rem; padding: 1rem 1.25rem; background: #151c2e; }
+.share-code span { color: #b5bfd7; font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.share-code strong { color: #f4f6ff; font-size: 1.8rem; letter-spacing: .12em; }
+.invite-card { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: center; margin: 1.5rem 0; border: 1px solid #35415d; border-radius: .9rem; padding: 1.25rem; background: #151c2e; }
+.invite-card h2 { font-size: 1.15rem; }
+.invite-card p { margin: .55rem 0 .85rem; color: #b5bfd7; line-height: 1.5; }
+.invite-link { display: block; overflow-wrap: anywhere; color: #e4b058; font-size: .86rem; }
+.qr-code { display: grid; place-items: center; border-radius: .5rem; padding: .5rem; background: #fff; }
+.player-list { display: grid; gap: .6rem; margin: 1.5rem 0; border-top: 1px solid #35415d; border-bottom: 1px solid #35415d; padding: 1rem 0; color: #c9d1e5; }
+.player-list p { margin: 0; }
+.inline-button { display: inline-block; text-decoration: none; }
+@media (max-width: 560px) { .invite-card { grid-template-columns: 1fr; }.qr-code { width: fit-content; }.share-code strong { font-size: 1.45rem; } }
