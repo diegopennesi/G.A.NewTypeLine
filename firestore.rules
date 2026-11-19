@@ -14,7 +14,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthenticated() { return request.auth != null; }
     function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-    function isParticipant(data) { return isAuthenticated() && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid); }
+    function isParticipant(data) { return isAuthenticated() && ((data.keys().hasAll(['playerOneId', 'playerTwoId']) && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid)) || (data.keys().hasAll(['redPlayerId', 'bluePlayerId']) && (data.redPlayerId == request.auth.uid || data.bluePlayerId == request.auth.uid))); }
     function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']); }
     function isValidUid(value) { return value is string && value.size() > 0 && value.size() <= 128; }
     function isLobbyCode(code) { return code is string && code.size() == 8 && code.matches('^[A-Z0-9]+$'); }
@@ -40,6 +40,9 @@ service cloud.firestore {
         request.resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data)
         || isAuthenticated() && resource.data.playerTwoId == request.auth.uid && request.resource.data.status == 'SETUP' && request.resource.data.playerOneId == resource.data.playerOneId && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time && isValidGame(request.resource.data);
+      // Permit a Player 2 from the immediately preceding schema to leave,
+      // without introducing the newer display-name fields into that document.
+      allow update: if isAuthenticated() && resource.data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) && resource.data.playerTwoId == request.auth.uid && resource.data.status == 'SETUP' && request.resource.data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerTwoId', 'createdAt', 'updatedAt']) && request.resource.data.playerTwoId == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'status', 'updatedAt']) && request.resource.data.updatedAt == request.time;
       allow delete: if isAuthenticated() && resource.data.playerOneId == request.auth.uid && resource.data.playerTwoId == null;
     }
   }
