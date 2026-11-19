@@ -4,7 +4,7 @@ import { assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } 
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 
 let environment: RulesTestEnvironment
-const game = { code: 'ABCD2345', status: 'SETUP', ownerId: 'pc', playerOneId: 'pc', playerOneName: 'PC', playerTwoId: 'phone', playerTwoName: 'Phone', createdAt: new Date(), updatedAt: new Date() }
+const game = { code: 'ABCD2345', matchSize: '3v3', status: 'SETUP', ownerId: 'pc', playerOneId: 'pc', playerOneName: 'PC', playerTwoId: 'phone', playerTwoName: 'Phone', createdAt: new Date(), updatedAt: new Date() }
 
 beforeAll(async () => { environment = await initializeTestEnvironment({ projectId: 'demo-ganewtypeline', firestore: { rules: readFileSync('firestore.rules', 'utf8') } }) })
 afterAll(async () => environment.cleanup())
