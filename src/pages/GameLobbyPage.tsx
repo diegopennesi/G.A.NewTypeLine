@@ -39,6 +39,5 @@ export function GameLobbyPage() {
     </section>}
     <div className="player-list"><p><b>Giocatore 1</b> {isPlayerOne ? 'Tu' : game.playerOneName}</p><p><b>Giocatore 2</b> {game.playerTwoId ? (isPlayerTwo ? 'Tu' : game.playerTwoName) : 'In attesa…'}</p></div>
     <button className="button secondary" disabled={leaving} onClick={() => { if (!user) return; setLeaving(true); void leaveLobby(game.code, user.uid).then(() => navigate('/', { replace: true })).catch(() => { setLeaving(false); setError('Impossibile uscire dalla lobby.') }) }}>{leaving ? 'Uscita…' : 'Esci dalla lobby'}</button>
-    <Link className="button secondary inline-button" to="/">Torna alla dashboard</Link>
   </section>
 }

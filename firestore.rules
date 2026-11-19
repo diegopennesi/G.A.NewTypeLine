@@ -15,13 +15,13 @@ service cloud.firestore {
     function isAuthenticated() { return request.auth != null; }
     function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
     function isParticipant(data) { return isAuthenticated() && ((data.keys().hasAll(['playerOneId', 'playerTwoId']) && (data.playerOneId == request.auth.uid || data.playerTwoId == request.auth.uid)) || (data.keys().hasAll(['redPlayerId', 'bluePlayerId']) && (data.redPlayerId == request.auth.uid || data.bluePlayerId == request.auth.uid))); }
-    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']); }
+    function hasRequiredFields(data) { return data.keys().hasAll(['code', 'matchSize', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']); }
     function isValidUid(value) { return value is string && value.size() > 0 && value.size() <= 128; }
     function isLobbyCode(code) { return code is string && code.size() == 8 && code.matches('^[A-Z0-9]+$'); }
     function isValidGame(data) {
       return hasRequiredFields(data) &&
-        data.keys().hasOnly(['code', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']) &&
-        isLobbyCode(data.code) && data.status in ['WAITING', 'SETUP'] &&
+        data.keys().hasOnly(['code', 'matchSize', 'status', 'ownerId', 'playerOneId', 'playerOneName', 'playerTwoId', 'playerTwoName', 'createdAt', 'updatedAt']) &&
+        isLobbyCode(data.code) && data.matchSize in ['3v3', '5v5'] && data.status in ['WAITING', 'SETUP'] &&
         isValidUid(data.ownerId) && data.playerOneId == data.ownerId && data.playerOneName is string && data.playerOneName.size() > 0 && data.playerOneName.size() <= 64 &&
         ((data.playerTwoId == null && data.playerTwoName == null) || (isValidUid(data.playerTwoId) && data.playerTwoName is string && data.playerTwoName.size() > 0 && data.playerTwoName.size() <= 64)) &&
         data.createdAt is timestamp && data.updatedAt is timestamp;
