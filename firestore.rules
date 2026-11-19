@@ -27,6 +27,9 @@ service cloud.firestore {
         data.createdAt is timestamp && data.updatedAt is timestamp;
     }
     match /games/{gameCode} {
+      // Player 2 may only clear their own slot; every other game field is
+      // protected by the narrow affected-key list.
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.playerTwoId && resource.data.status == 'SETUP' && request.resource.data.playerTwoId == null && request.resource.data.playerTwoName == null && request.resource.data.status == 'WAITING' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId', 'playerTwoName', 'status', 'updatedAt']);
       // An authenticated invitee may read one waiting lobby to perform the
       // atomic join transaction. Listing remains participant-only.
       allow get: if isAuthenticated() && (resource.data.status == 'WAITING' || isParticipant(resource.data));
