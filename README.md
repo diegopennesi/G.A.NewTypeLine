@@ -23,7 +23,7 @@ Firestore salva `lastActionAt` usando l’orologio del server. Per le partite pr
 
 La Cloud Function `cleanupExpiredGames` gira ogni lunedì alle 09:00 GMT. Elimina le partite e le sottocollezioni con ultima attività pari o precedente all’orario pianificato meno 8 giorni. Per una partita senza mosse conta l’ultimo aggiornamento della lobby. Ad esempio, lunedì 14 alle 09:00 la soglia è domenica 6 alle 09:00 GMT, inclusa.
 
-Il workflow di deploy pubblica prima le regole Firestore e poi la funzione. Il progetto deve avere il piano Blaze e l’identità di deploy deve poter creare Cloud Functions di seconda generazione e job Cloud Scheduler.
+La CI parte quando si apre o aggiorna una pull request. **Deploy Firebase** pubblica Hosting e regole Firestore quando la PR viene unita in `main`. Per pubblicare la funzione, dopo il deploy delle regole avvia manualmente **Deploy Weekly Cleanup** da GitHub Actions sul branch `main`. Il progetto deve avere il piano Blaze, le API necessarie abilitate e un’identità di deploy con i permessi per Cloud Functions di seconda generazione e Cloud Scheduler.
 
 ### Test locali delle regole e dei servizi
 
