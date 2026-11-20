@@ -1,3 +1,4 @@
+import type { ReactionTiming } from '../data/tacticsCards'
 import { findUnitCard } from '../data/unitCards'
 import type { Game } from './game'
 
@@ -5,6 +6,7 @@ type Seat = 'one' | 'two'
 export type TimelineUnit = { key: string; id: string; seat: Seat; time: number; reserve: boolean }
 export type Activation = {
   version: number
+  reaction?: ReactionTiming | null
   lastKind?: TimelineAction['kind']
   units: TimelineUnit[]
   round: number
@@ -16,6 +18,8 @@ export type TimelineAction =
   | { kind: 'start'; key: string }
   | { kind: 'pay'; delta: number }
   | { kind: 'end' }
+  | { kind: 'openReaction'; timing: ReactionTiming }
+  | { kind: 'closeReaction' }
   | { kind: 'defeat'; key: string }
   | { kind: 'effect'; key: string; delta: number }
 
@@ -64,8 +68,14 @@ export function applyTimelineAction(state: Activation, seat: Seat, action: Timel
         current: { key: action.key, time: next.time, paid: false, id: change.version },
         units: state.units.map(unit => unit.key === action.key ? { ...unit, reserve: false } : unit),
       }
+    case 'openReaction':
+      if (!current || current.seat !== seat || state.reaction) throw new Error('Non puoi aprire una reazione ora.')
+      return { ...state, ...change, reaction: action.timing }
+    case 'closeReaction':
+      if (!current || current.seat === seat || !state.reaction) throw new Error('Non puoi chiudere questa reazione.')
+      return { ...state, ...change, reaction: null }
     case 'pay': {
-      if (!state.current || !current || current.seat !== seat || state.current.paid ||
+      if (state.reaction || !state.current || !current || current.seat !== seat || state.current.paid ||
           !Number.isInteger(action.delta) || action.delta < 1 || action.delta > 20) {
         throw new Error('Indica un costo da 1 a 20 TL per il MS in attivazione.')
       }
@@ -73,13 +83,13 @@ export function applyTimelineAction(state: Activation, seat: Seat, action: Timel
         units: [...state.units.filter(unit => unit.key !== current.key), { ...current, time: current.time + action.delta }] }
     }
     case 'end':
-      if (!state.current?.paid || current?.seat !== seat) throw new Error('Prima paga il costo TL dell’azione.')
+      if (state.reaction || !state.current?.paid || current?.seat !== seat) throw new Error('Prima paga il costo TL dell’azione.')
       return { ...finish(), ...change }
     case 'defeat':
     case 'effect': {
       const target = state.units.find(unit => unit.key === action.key)
       const delta = action.kind === 'defeat' ? 2 : action.delta
-      if (!target || !Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 20 ||
+      if (state.reaction || !target || !Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 20 ||
           target.time + delta < (state.current?.time ?? next.time) || (state.current === null && next.time > 20) || (action.kind === 'defeat' && target.reserve) ||
           (action.kind === 'effect' && target.key === current?.key && state.current!.paid && target.time + delta <= state.round)) {
         throw new Error('Effetto non valido per questa unità o per il round corrente.')

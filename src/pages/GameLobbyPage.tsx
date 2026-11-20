@@ -1,3 +1,4 @@
+import { CardSelectionList } from '../components/CardSelectionList'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
@@ -85,7 +86,18 @@ export function GameLobbyPage() {
       <div className="qr-code"><QRCodeSVG value={inviteUrl} size={176} level="M" includeMargin title={`QR per entrare nella partita ${game.code}`} /></div>
     </section>}
     <div className="player-list"><p><b>Giocatore 1</b> {isPlayerOne ? 'Tu' : game.playerOneName} {game.playerOneTeam && `— ${game.playerOneTeam === 'RED' ? 'Rosso' : 'Blu'} ${game.playerOneReady ? '✓' : ''}`}</p><p><b>Giocatore 2</b> {game.playerTwoId ? `${isPlayerTwo ? 'Tu' : game.playerTwoName} — ${game.playerTwoTeam === 'RED' ? 'Rosso' : 'Blu'} ${game.playerTwoReady ? '✓' : ''}` : 'In attesa…'}</p></div>
-    {game.status === 'SETUP' && <section className="squad-picker"><h2>Componi la tua squadra · {selection.length}/{squadSize}</h2><p className="lead">Unit Card ST01, EX01, EX02 e PA01.</p><div className="unit-grid">{unitCards.map((unit) => <button type="button" className={`unit-card ${selection.includes(unit.id) ? 'selected' : ''}`} key={unit.id} disabled={myReady || ready || game.status === 'ACTIVE'} onClick={() => setSelection((current) => current.includes(unit.id) ? current.filter((id) => id !== unit.id) : current.length < squadSize ? [...current, unit.id] : current)}><b>{unit.name}</b><span>{unit.id} · {unit.faction}</span><span>{unit.stats ? 'TL iniziale' : 'TL provv.'} {unit.startingTimeline}</span>{unit.stats && <span>HP {unit.stats.hp} · VP {unit.stats.vp}</span>}</button>)}</div></section>}
+    {game.status === 'SETUP' && <section className="squad-picker">
+      <h2>Componi la tua squadra · {selection.length}/{squadSize}</h2>
+      <CardSelectionList label="Cerca Unit Card"
+        rows={unitCards.map(unit => ({
+          id: unit.id, name: unit.name,
+          summary: `${unit.id} · ${unit.faction} · TL ${unit.startingTimeline}${unit.stats ? ` · HP ${unit.stats.hp} · VP ${unit.stats.vp}` : ''}`,
+          keywords: unit.stats?.weapons.map(weapon => weapon.name).join(' '),
+        }))}
+        selected={selection} limit={squadSize} disabled={myReady || ready}
+        onToggle={id => setSelection(current => current.includes(id)
+          ? current.filter(cardId => cardId !== id) : current.length < squadSize ? [...current, id] : current)} />
+    </section>}
     {(waitingForPlayer || game.status === 'SETUP') && user && deck && <TacticsDeckPicker key={deckKey} code={game.code} playerId={user.uid} deck={deck} locked={myReady || ready} />}
     {!waitingForPlayer && game.status !== 'ACTIVE' && <button className="button" disabled={ready || (!myReady && deck?.length !== tacticsDeckSize) || (myReady && !game.playerOneReady) || (myReady && !game.playerTwoReady) || selection.length !== squadSize} onClick={() => { if (!user) return; setError(null); setReadyState(true); void setReady(game.code, user.uid, isPlayerOne, selection).then(() => setReadyState(false)).catch((reason) => { setReadyState(false); setError(reason instanceof Error ? reason.message : 'Impossibile confermare.') }) }}>{ready ? 'Conferma…' : myReady ? (game.playerOneReady && game.playerTwoReady ? 'Avvia partita' : 'Pronto · in attesa') : selection.length !== squadSize ? `Scegli ${squadSize} Unit Card` : deck?.length !== tacticsDeckSize ? 'Salva il mazzo tattico' : 'Sono pronto'}</button>}
     {game.status === 'ACTIVE' && user && <ManualTimeline key={game.code} game={game} playerId={user.uid} deck={deck ?? []} />}

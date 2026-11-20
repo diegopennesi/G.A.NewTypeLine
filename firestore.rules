@@ -47,7 +47,12 @@ service cloud.firestore {
   }
   function tacticsIds() {
    return ['tactic-01','tactic-02','tactic-03','tactic-04','tactic-05','tactic-06',
-    'tactic-07','tactic-08','tactic-09','tactic-10','tactic-11','tactic-12'];
+    'tactic-07','tactic-08','tactic-09','tactic-10','tactic-11','tactic-12',
+    'ST01-T01','ST01-T02','ST01-T03','ST01-T04','ST01-T05','ST01-T06','ST01-T07','ST01-T08','ST01-T09',
+    'ST01-T10','ST01-T11','ST01-T12','ST01-T13','ST01-T14','ST01-T15','ST01-T16','ST01-T17','ST01-T18',
+    'EX01-T01','EX01-T02','EX01-T03','EX01-T04','EX01-T05','EX01-T06','EX01-T07','EX01-T08','EX01-T09',
+    'EX02-T01','EX02-T02','EX02-T03','EX02-T04','EX02-T05','EX02-T06','EX02-T07','EX02-T08','EX02-T09',
+    'PA01-T01','PA01-T02','PA01-T03','PA01-T04','PA01-T05','PA01-T06','PA01-T07','PA01-T08','PA01-T09'];
   }
   function validTacticsDeck(d) {
    return d.keys().hasOnly(['cards']) && d.cards is list &&
@@ -85,11 +90,12 @@ service cloud.firestore {
     let before = resource.data.get('activation', {'version': 0});
     let next = request.resource.data.activation;
     return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt']) &&
-     next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind']) &&
+     next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind','reaction']) &&
      next.version is int && next.version == before.version + 1 &&
      next.units is list && next.units.size() == resource.data.playerOneSquad.size() + resource.data.playerTwoSquad.size() &&
      next.round is int && next.round >= before.get('round', 1) && next.round <= 20 &&
      next.lastSeat in [null,'one','two'] &&
+     next.get('reaction', null) in [null,'beforeRoll','afterRoll','damage','defeat','movement'] &&
      (next.current == null || (next.current is map &&
       next.current.keys().hasOnly(['key','time','paid','id']) &&
       next.current.key is string && next.current.time == next.round &&
@@ -103,7 +109,16 @@ service cloud.firestore {
    function validActivationTransition(before, next) {
     let current = before.get('current', null);
     let lastSeat = before.get('lastSeat', null);
+    let oldReaction = before.get('reaction', null);
+    let newReaction = next.get('reaction', null);
     return
+     (next.lastKind == 'openReaction' && ownsActivation(current) && oldReaction == null &&
+      newReaction != null && next.current == current && next.round == before.round &&
+      next.units == before.units && next.lastSeat == lastSeat) ||
+     (next.lastKind == 'closeReaction' && current != null && !ownsActivation(current) &&
+      oldReaction != null && newReaction == null && next.current == current &&
+      next.round == before.round && next.units == before.units && next.lastSeat == lastSeat) ||
+     (oldReaction == null && newReaction == null && (
      (next.lastKind == 'initiative' && current == null && next.current == null &&
       lastSeat == null && next.lastSeat != null) ||
      (next.lastKind == 'start' && current == null && ownsActivation(next.current) &&
@@ -118,20 +133,73 @@ service cloud.firestore {
      (next.lastKind == 'defeat' && (
       (next.current == current && next.lastSeat == lastSeat) ||
       (current != null && next.current == null &&
-       next.lastSeat == (current.key.matches('one/.*') ? 'one' : 'two'))));
+       next.lastSeat == (current.key.matches('one/.*') ? 'one' : 'two'))))));
    }
    function recordsTacticsAction() {
     let uid = request.auth.uid;
     return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt','lastActionAt']) &&
      getAfter(/databases/$(database)/documents/games/$(code)/tacticsPlays/$(uid)).data.changedAt == request.time;
    }
+   function responseTiming(id) {
+    return {
+     'ST01-T02': 'damage',
+     'PA01-T05': 'damage',
+     'PA01-T08': 'damage',
+     'ST01-T03': 'defeat',
+     'ST01-T08': 'beforeRoll',
+     'ST01-T16': 'beforeRoll',
+     'ST01-T17': 'beforeRoll',
+     'EX02-T08': 'beforeRoll',
+     'EX02-T09': 'beforeRoll',
+     'PA01-T04': 'beforeRoll',
+     'PA01-T09': 'beforeRoll',
+     'ST01-T09': 'afterRoll',
+     'ST01-T18': 'afterRoll',
+     'EX01-T08': 'afterRoll',
+     'EX01-T09': 'afterRoll',
+     'EX02-T07': 'afterRoll',
+     'PA01-T01': 'movement'
+    }.get(id, null);
+   }
+   function signatureUnit(id) {
+    return {
+     'ST01-T01': 'ST01-U001',
+     'ST01-T02': 'ST01-U002',
+     'ST01-T03': 'ST01-U003',
+     'ST01-T10': 'ST01-U004',
+     'ST01-T11': 'ST01-U005',
+     'ST01-T12': 'ST01-U006',
+     'EX01-T01': 'EX01-U01',
+     'EX01-T02': 'EX01-U02',
+     'EX01-T03': 'EX01-U03',
+     'EX02-T01': 'EX02-U01',
+     'EX02-T02': 'EX02-U02',
+     'EX02-T03': 'EX02-U03',
+     'PA01-T01': 'PA01-U01',
+     'PA01-T02': 'PA01-U02',
+     'PA01-T03': 'PA01-U03'
+    }.get(id, null);
+   }
+   function playableTactics(game, current, uid, id) {
+    let seat = game.playerOneId == uid ? 'one' : 'two';
+    let ownsTurn = current.key.matches(seat + '/.*');
+    let timing = responseTiming(id);
+    let signature = signatureUnit(id);
+    let reaction = game.activation.get('reaction', null);
+    return id.matches('tactic-.*') ? (ownsTurn || id in ['tactic-11','tactic-12']) :
+     (timing != null
+      ? reaction == timing && (signature == null ||
+        signature in (seat == 'one' ? game.playerOneSquad : game.playerTwoSquad))
+      : ownsTurn && (reaction == null || (id == 'PA01-T07' && reaction == 'beforeRoll')) &&
+       (signature == null || current.key == seat + '/' + signature) &&
+       (!(id in ['ST01-T01','ST01-T11','ST01-T12']) || !current.paid));
+   }
    function tacticsTiming(d, uid) {
     let game = currentGame();
     let current = game.get('activation', {}).get('current', null);
     let id = d.order[d.order.size() - 1];
-    let seat = game.playerOneId == uid ? 'one' : 'two';
-    return !('activation' in game) || (current != null &&
-     (current.key.matches(seat + '/.*') || id in ['tactic-11','tactic-12']) &&
+    return (!('activation' in game) && id.matches('tactic-.*')) || (current != null &&
+     playableTactics(game, current, uid, id) &&
      d.get('activationIds', {}).get(id, 0) == current.id &&
      d.get('phases', {}).get(id, 0) == (current.time <= 10 ? 1 : 2) &&
      d.slots[id] == (current.time <= 10 ? current.time : current.time - 10));
@@ -171,10 +239,11 @@ service cloud.firestore {
     request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
    allow update: if signed() && activeWithinDeadline(resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.lastActionAt == request.time && (
-    (participant(resource.data) && (recordsTacticsAction() || writesActivation())) ||
+    (participant(resource.data) && ('activation' in request.resource.data.diff(resource.data).affectedKeys()
+      ? writesActivation() : recordsTacticsAction())) ||
     (!('activation' in resource.data) && request.auth.uid == resource.data.playerOneId && manualMove('playerOneTimeline', resource.data.playerOneSquad)) ||
     (!('activation' in resource.data) && request.auth.uid == resource.data.playerTwoId && manualMove('playerTwoTimeline', resource.data.playerTwoSquad)));
-   allow update: if signed() && valid(request.resource.data) && request.resource.data.updatedAt == request.time &&
+   allow update: if signed() && resource.data.status in ['WAITING','SETUP'] && valid(request.resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.code == resource.data.code && request.resource.data.matchSize == resource.data.matchSize &&
     request.resource.data.createdAt == resource.data.createdAt && (
      (resource.data.status == 'WAITING' && withinDeadline(resource.data) && request.resource.data.status == 'SETUP' &&

@@ -11,7 +11,7 @@
 .player-list p { margin: 0; }
 .inline-button { display: inline-block; text-decoration: none; }
 @media (max-width: 560px) { .invite-card { grid-template-columns: 1fr; }.qr-code { width: fit-content; }.share-code strong { font-size: 1.45rem; } }
-.squad-picker { margin: 1.5rem 0; }.squad-picker h2 { font-size: 1.2rem; }.unit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }.unit-card { display: grid; gap: .35rem; min-height: 7rem; border: 1px solid #53617f; border-radius: .65rem; padding: .75rem; background: #151c2e; color: #dfe6fa; text-align: left; }.unit-card span { color: #aeb9d3; font-size: .8rem; }.unit-card.selected { border-color: #e4b058; background: #2c2921; }
+.squad-picker { margin: 1.5rem 0; }.squad-picker h2 { font-size: 1.2rem; }
 
 .lobby-page-active { max-width: 76rem; }
 .manual-timeline { margin-block: 1.5rem; padding: clamp(.75rem, 2vw, 1.25rem); border: 1px solid #35415d; border-radius: .9rem; background: #151c2e; }
@@ -82,3 +82,17 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .timeline-drag-unit { cursor: grab; touch-action: none; user-select: none; }
 .timeline-drag-unit:active { cursor: grabbing; }
 .timeline-slot[data-drop-target] { outline: 2px solid #ffce7e; outline-offset: -2px; }
+
+
+.card-selection { margin-top: .85rem; }
+.card-selection-count { margin: .45rem 0; color: #c9d1e5; font-size: .85rem; }
+.card-selection-list { max-height: min(24rem, 55vh); overflow-y: auto; padding: .2rem; margin: 0; list-style: none; border: 1px solid #35415d; border-radius: .55rem; }
+.card-selection-list li + li { border-top: 1px solid #35415d; }
+.card-selection-row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; width: 100%; min-height: 44px; border: 0; border-radius: .3rem; padding: .55rem .65rem; background: transparent; color: #eff4ff; text-align: left; }
+.card-selection-text { display: grid; gap: .16rem; }
+.card-selection-text > span { color: #b5bfd7; font-size: .8rem; }
+.card-selection-row[aria-pressed="true"] { background: #2c2921; }
+.card-selection-row[aria-pressed="true"] .card-selection-check { color: #ffce7e; }
+.card-selection-row:not(:disabled):hover { box-shadow: inset 0 0 0 1px #657798; }
+.card-selection-row:focus-visible { outline: 2px solid #ffce7e; outline-offset: -2px; }
+.card-selection-row:disabled .card-selection-check { opacity: .55; }

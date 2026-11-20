@@ -349,3 +349,42 @@ it('coordinates activation, fixed tactic markers, phase wrap and out-of-turn eff
   expect(nextActivation(state).unit?.key).toBe('one/placeholder-2')
 
 })
+
+it('registers official tactics in the correct reaction window and resumes the activation after a pass', async () => {
+  const code = 'REACT123'
+  const path = `games/${code}`
+  const one = ['ST01-U001', 'ST01-U002', 'ST01-U005']
+  const two = ['ST01-U002', 'ST01-U005', 'placeholder-4']
+  const deck = ['ST01-T01', 'ST01-T02', 'ST01-T03', 'ST01-T04', 'ST01-T05', 'ST01-T06', 'ST01-T07', 'ST01-T08', 'ST01-T09']
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore()
+    await setDoc(doc(db, path), {
+      ...game, code, status: 'SETUP', playerOneSquad: one, playerTwoSquad: two,
+    })
+  })
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  const use = (db: typeof pc) => vi.mocked(getFirestoreService).mockReturnValue(db as unknown as ReturnType<typeof getFirestoreService>)
+  use(pc)
+  await saveTacticsDeck(code, 'pc', deck)
+  await setReady(code, 'pc', true, one)
+  use(phone)
+  await saveTacticsDeck(code, 'phone', deck)
+  await setReady(code, 'phone', false, two)
+  use(pc)
+  await changeActivation(code, 'pc', 0, { kind: 'start', key: 'one/ST01-U001' })
+  await playTacticsCard(code, 'pc', 'ST01-T01', 2, 1)
+  await changeActivation(code, 'pc', 1, { kind: 'pay', delta: 3 })
+  await changeActivation(code, 'pc', 2, { kind: 'openReaction', timing: 'beforeRoll' })
+  await expect(changeActivation(code, 'pc', 3, { kind: 'end' })).rejects.toThrow()
+  use(phone)
+  await expect(playTacticsCard(code, 'phone', 'ST01-T09', 2, 1)).rejects.toThrow('non è giocabile')
+  await playTacticsCard(code, 'phone', 'ST01-T08', 2, 1)
+  await changeActivation(code, 'phone', 3, { kind: 'closeReaction' })
+  use(pc)
+  const done = await changeActivation(code, 'pc', 4, { kind: 'end' })
+  expect(done.current).toBeNull()
+  expect((await getDoc(doc(pc, path, 'tacticsPlays', 'phone'))).data()).toMatchObject({
+    slots: { 'ST01-T08': 2 }, phases: { 'ST01-T08': 1 },
+  })
+})
