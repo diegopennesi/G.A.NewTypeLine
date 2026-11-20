@@ -78,3 +78,7 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 }
 .timeline-action-controls input { width: 5rem; }
 .tactics-revealed .button { margin-top: .6rem; }
+
+.timeline-drag-unit { cursor: grab; touch-action: none; user-select: none; }
+.timeline-drag-unit:active { cursor: grabbing; }
+.timeline-slot[data-drop-target] { outline: 2px solid #ffce7e; outline-offset: -2px; }
