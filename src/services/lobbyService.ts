@@ -1,4 +1,4 @@
-import { unitCards } from '../data/unitCards'
+import { findUnitCard } from '../data/unitCards'
 import { collection, doc, onSnapshot, or, query, where, runTransaction, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore'
 import type { Game } from '../models/game'
 import { matchActivity } from '../models/matchActivity'
@@ -20,7 +20,7 @@ export async function setReady(code: string, playerId: string, playerOne: boolea
     if ((playerOne ? game.playerOneId : game.playerTwoId) !== playerId) throw new Error('Non puoi modificare questa partita.')
     if (game.status === 'ACTIVE') return
     if (game.status !== 'SETUP' || squad.length !== (game.matchSize === '3v3' ? 3 : 5) ||
-        new Set(squad).size !== squad.length || squad.some(id => !unitCards.some(unit => unit.id === id))) {
+        new Set(squad).size !== squad.length || squad.some(id => !findUnitCard(id))) {
       throw new Error('Squadra non valida.')
     }
     if (playerOne ? game.playerOneReady : game.playerTwoReady) return
@@ -58,7 +58,7 @@ export async function moveTimelineUnit(code: string, playerId: string, unitId: s
     const isPlayerOne = game.playerOneId === playerId
     const field = isPlayerOne ? 'playerOneTimeline' : 'playerTwoTimeline'
     const squad = isPlayerOne ? game.playerOneSquad : game.playerTwoSquad
-    const unit = unitCards.find(candidate => candidate.id === unitId)
+    const unit = findUnitCard(unitId)
     if (!unit || !squad.includes(unitId)) throw new Error('Questa unità non fa parte della tua squadra.')
 
     const positions = game[field] ?? {}

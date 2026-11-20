@@ -1,4 +1,4 @@
-import { unitCards } from '../data/unitCards'
+import { findUnitCard } from '../data/unitCards'
 import type { Game } from './game'
 
 type Seat = 'one' | 'two'
@@ -28,7 +28,7 @@ export function initialActivation(game: Game): Activation {
     { seat: 'two', squad: game.playerTwoSquad, positions: game.playerTwoTimeline },
   ] as const
   const units = seats.flatMap(({ seat, squad, positions }) => squad.flatMap(id => {
-    const card = unitCards.find(candidate => candidate.id === id)
+    const card = findUnitCard(id)
     return card ? [{ key: `${seat}/${id}`, id, seat, time: positions?.[id] ?? card.startingTimeline, reserve: true }] : []
   }))
   return { version: 0, units, round: 1, lastSeat: null, current: null }

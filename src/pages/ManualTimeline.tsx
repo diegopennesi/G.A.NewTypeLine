@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
-import { unitCards } from '../data/unitCards'
+import { findUnitCard } from '../data/unitCards'
 import { tacticsCards } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
 import type { Game } from '../models/game'
@@ -36,11 +36,12 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const seat = game.playerOneId === playerId ? 'one' : 'two'
   const activeUnit = state.units.find(unit => unit.key === current?.key)
   const ownTurn = activeUnit?.seat === seat
+  const weapons = findUnitCard(activeUnit?.id)?.stats?.weapons ?? []
   const completed = !current && next.time > 20
   const round = current?.time ?? next.time
   const phase = viewPhase ?? (completed ? 2 : roundPhase(round))
   const team = (side: 'one' | 'two') => side === 'one' ? game.playerOneTeam : game.playerTwoTeam
-  const label = (id?: string) => unitCards.find(card => card.id === id)?.name ?? 'MS'
+  const label = (id?: string) => findUnitCard(id)?.name ?? 'MS'
   const target = state.units.find(unit => unit.key === targetKey)
   const ownPlays = playsByPlayer[playerId]
   const lastPlay = ownPlays?.order.at(-1)
@@ -181,6 +182,12 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
       </ol>
     </div>
     {ownTurn && current && <div className="timeline-action-controls">
+      {!current.paid && weapons.length > 0 && <div className="tactics-controls" role="group" aria-label="Costo TL delle armi">
+        {weapons.map(weapon => <button key={weapon.name} type="button" className="button secondary" disabled={saving}
+          onClick={() => setDelta(String(weapon.timelineCost))}>
+          {weapon.name} · {weapon.timelineCost} TL
+        </button>)}
+      </div>}
       {!current.paid && <p>Tocca una TL evidenziata o trascina il MS sulla destinazione. Puoi cambiare fase dalla vista.</p>}
       {current.paid ? <button className="button" type="button" disabled={saving}
         onClick={() => update({ kind: 'end' }, 'Attivazione conclusa.')}>Termina attivazione</button>

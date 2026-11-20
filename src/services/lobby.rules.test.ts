@@ -6,7 +6,8 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firest
 import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
 import { playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
 import { changeActivation } from './activationService'
-import { nextActivation } from '../models/activation'
+import type { Game } from '../models/game'
+import { initialActivation, nextActivation } from '../models/activation'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
 
@@ -21,7 +22,8 @@ describe('Sprint 3: setup e regole', () => {
     it(`persists simultaneous confirmations and starts ${size}v${size}`, async () => {
       const code = size === 3 ? 'READY333' : 'READY555'
       await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), `games/${code}`), { ...game, code, matchSize: `${size}v${size}` }))
-      const squad = Array.from({ length: size }, (_, i) => `placeholder-${i + 1}`)
+      const squad = size === 3 ? ['ST01-U001', 'ST01-U006', 'placeholder-7']
+        : Array.from({ length: size }, (_, i) => `placeholder-${i + 1}`)
       await Promise.all(['pc', 'phone'].map((uid, index) => {
         const db = environment.authenticatedContext(uid).firestore()
         vi.mocked(getFirestoreService).mockReturnValue(db as unknown as ReturnType<typeof getFirestoreService>)
@@ -31,6 +33,9 @@ describe('Sprint 3: setup e regole', () => {
       expect(saved.status).toBe('ACTIVE')
       expect(saved.playerOneSquad).toEqual(squad)
       expect(saved.playerTwoSquad).toEqual(squad)
+      if (size === 3) {
+        expect(initialActivation(saved as Game).units.slice(0, 3).map(unit => unit.time)).toEqual([2, 1, 2])
+      }
     })
   }
   it('rejects incomplete, duplicate and unknown squads, opponent edits and early start', async () => {
