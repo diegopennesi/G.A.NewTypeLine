@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 
 import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
-import { playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
+import { drawnTacticsCards, type TacticsDeck, playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
 import { changeActivation, finishMatch } from './activationService'
 import type { Game } from '../models/game'
 import { initialActivation, nextActivation } from '../models/activation'
@@ -414,4 +414,48 @@ it('lets a participant finish a completed match and prevents early closure', asy
   const saved = (await getDoc(otherRef)).data()
   expect(saved?.status).toBe('FINISHED')
   expect(saved?.finishedAt.isEqual(saved.updatedAt)).toBe(true)
+})
+
+it('keeps random draws private, unlocks three more at the second phase and keeps the last three covered', async () => {
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  const code = await createLobby('pc', 'PC', '3v3', true)
+  const ref = doc(pc, 'games', code)
+  const privateRef = doc(ref, 'tacticsDecks', 'pc')
+  expect((await getDoc(privateRef)).data()).toEqual({ cards: [], randomized: true })
+  const cards = ['ST01-T04', 'ST01-T05', 'ST01-T06', 'ST01-T07', 'ST01-T13', 'ST01-T14', 'ST01-T15', 'EX02-T04', 'EX02-T05']
+  await saveTacticsDeck(code, 'pc', cards, true)
+  const deck = (await getDoc(privateRef)).data() as TacticsDeck
+  expect(new Set(deck.cards)).toEqual(new Set(cards))
+  const squad = ['ST01-U001', 'ST01-U002', 'ST01-U003']
+  const units = ['one', 'two'].flatMap(seat => squad.map((id, index) => ({
+    key: `${seat}/${id}`, id, seat, time: seat === 'one' ? (index === 0 ? 10 : 12) : 9, reserve: false,
+  })))
+  await environment.withSecurityRulesDisabled(context => updateDoc(doc(context.firestore(), 'games', code), {
+    status: 'ACTIVE', playerOneSquad: squad, playerTwoSquad: squad, playerTwoId: 'phone', playerTwoName: 'Phone',
+    playerOneTeam: 'RED', playerTwoTeam: 'BLUE', playerOneReady: true, playerTwoReady: true,
+    activation: { version: 1, round: 10, lastSeat: 'two', current: { key: units[0].key, time: 10, paid: false, id: 1 }, units },
+  }))
+  await assertFails(getDoc(doc(phone, 'games', code, 'tacticsDecks', 'pc')))
+  expect(drawnTacticsCards(deck, (await getDoc(ref)).data() as Game, 'pc')).toEqual(deck.cards.slice(0, 3))
+  await expect(playTacticsCard(code, 'pc', deck.cards[3], 10, 1)).rejects.toThrow('non è ancora stata pescata')
+  const forbidden = writeBatch(pc)
+  forbidden.set(doc(ref, 'tacticsPlays', 'pc'), {
+    order: [deck.cards[3]], slots: { [deck.cards[3]]: 10 }, phases: { [deck.cards[3]]: 1 },
+    activationIds: { [deck.cards[3]]: 1 }, changedAt: serverTimestamp(),
+  })
+  forbidden.update(ref, { updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
+  await assertFails(forbidden.commit())
+  await changeActivation(code, 'pc', 1, { kind: 'pay', delta: 1 })
+  const updated = (await getDoc(ref)).data() as Game
+  expect(updated.activation?.phaseTwoSeats).toEqual(['one'])
+  expect(drawnTacticsCards(deck, updated, 'pc')).toEqual(deck.cards.slice(0, 6))
+  await expect(playTacticsCard(code, 'pc', deck.cards[6], 10, 1)).rejects.toThrow('non è ancora stata pescata')
+  await changeActivation(code, 'pc', 2, { kind: 'effect', key: units[1].key, delta: -2 })
+  expect(drawnTacticsCards(deck, (await getDoc(ref)).data() as Game, 'pc')).toEqual(deck.cards.slice(0, 6))
+  await playTacticsCard(code, 'pc', deck.cards[3], 10, 1)
+  const played = (await getDoc(doc(phone, 'games', code, 'tacticsPlays', 'pc'))).data()
+  expect(played?.order).toEqual([deck.cards[3]])
+  expect((await getDoc(privateRef)).data()).toEqual(deck)
 })

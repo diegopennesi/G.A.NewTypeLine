@@ -1,5 +1,5 @@
 import { doc, runTransaction, serverTimestamp } from 'firebase/firestore'
-import { applyTimelineAction, initialActivation, type TimelineAction } from '../models/activation'
+import { applyTimelineAction, initialActivation, reachedSecondPhase, type TimelineAction } from '../models/activation'
 import type { Game } from '../models/game'
 import { getFirestoreService } from './firestoreService'
 
@@ -14,6 +14,8 @@ export async function changeActivation(code: string, uid: string, version: numbe
     const state = game.activation ?? initialActivation(game)
     if (version !== state.version) throw new Error('La Timeline è cambiata. Riprova.')
     const activation = applyTimelineAction(state, game.playerOneId === uid ? 'one' : 'two', action)
+    const phaseTwoSeats = (['one', 'two'] as const).filter(seat => reachedSecondPhase(activation, seat))
+    if (phaseTwoSeats.length > 0) activation.phaseTwoSeats = phaseTwoSeats
     transaction.update(ref, { activation, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
     return activation
   })

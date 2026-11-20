@@ -55,7 +55,7 @@ service cloud.firestore {
     'PA01-T01','PA01-T02','PA01-T03','PA01-T04','PA01-T05','PA01-T06','PA01-T07','PA01-T08','PA01-T09'];
   }
   function validTacticsDeck(d) {
-   return d.keys().hasOnly(['cards']) && d.cards is list &&
+   return d.keys().hasOnly(['cards','randomized']) && d.get('randomized', false) is bool && d.cards is list &&
     d.cards.size() == 9 && d.cards.toSet().size() == 9 && d.cards.hasOnly(tacticsIds());
   }
   function validTacticsPlays(d) {
@@ -90,7 +90,7 @@ service cloud.firestore {
     let before = resource.data.get('activation', {'version': 0});
     let next = request.resource.data.activation;
     return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt']) &&
-     next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind','reaction']) &&
+     next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind','reaction','phaseTwoSeats']) &&
      next.version is int && next.version == before.version + 1 &&
      next.units is list && next.units.size() == resource.data.playerOneSquad.size() + resource.data.playerTwoSquad.size() &&
      next.round is int && next.round >= before.get('round', 1) && next.round <= 20 &&
@@ -100,7 +100,7 @@ service cloud.firestore {
       next.current.keys().hasOnly(['key','time','paid','id']) &&
       next.current.key is string && next.current.time == next.round &&
       next.current.paid is bool && next.current.id is int)) &&
-     validActivationTransition(before, next);
+     validActivationTransition(before, next) && validDrawProgress(before, next);
    }
    function ownsActivation(current) {
     let side = resource.data.playerOneId == request.auth.uid ? 'one' : 'two';
@@ -204,14 +204,43 @@ service cloud.firestore {
      d.get('phases', {}).get(id, 0) == (current.time <= 10 ? 1 : 2) &&
      d.slots[id] == (current.time <= 10 ? current.time : current.time - 10));
    }
-   function ownDeck(uid) { return get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards; }
+   function unitInSecondPhase(unit, seat) { return unit.seat != seat || unit.time > 10; }
+   function seatInSecondPhase(units, seat) {
+    return units.size() >= 6 &&
+     unitInSecondPhase(units[0], seat) && unitInSecondPhase(units[1], seat) && unitInSecondPhase(units[2], seat) &&
+     unitInSecondPhase(units[3], seat) && unitInSecondPhase(units[4], seat) && unitInSecondPhase(units[5], seat) &&
+     (units.size() == 6 || (units.size() == 10 && unitInSecondPhase(units[6], seat) &&
+      unitInSecondPhase(units[7], seat) && unitInSecondPhase(units[8], seat) && unitInSecondPhase(units[9], seat)));
+   }
+   function validDrawProgress(before, next) {
+    let oldSeats = before.get('phaseTwoSeats', []);
+    let newSeats = next.get('phaseTwoSeats', []);
+    return oldSeats == newSeats || (newSeats is list && newSeats.hasOnly(['one','two']) &&
+     newSeats.toSet().size() == newSeats.size() && newSeats.hasAll(oldSeats) &&
+     (!('one' in newSeats) || 'one' in oldSeats || seatInSecondPhase(next.units, 'one')) &&
+     (!('two' in newSeats) || 'two' in oldSeats || seatInSecondPhase(next.units, 'two')));
+   }
+   function allUnitsInSecondPhase(game, uid) {
+    let state = game.get('activation', {});
+    let seat = game.playerOneId == uid ? 'one' : 'two';
+    return seat in state.get('phaseTwoSeats', []) || seatInSecondPhase(state.get('units', []), seat);
+   }
+   function ownDeck(uid) {
+    let deck = get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data;
+    let cards = deck.cards;
+    return !deck.get('randomized', false) ? cards :
+     (cards.size() != 9 ? [] :
+      (allUnitsInSecondPhase(currentGame(), uid)
+       ? [cards[0],cards[1],cards[2],cards[3],cards[4],cards[5]]
+       : [cards[0],cards[1],cards[2]]));
+   }
    function ownsActivePlays(uid) {
     let game = currentGame();
     return participant(game) && request.auth.uid == uid && activeWithinDeadline(game) &&
      getAfter(gamePath()).data.lastActionAt == request.time;
    }
    function canEditDeck(uid) {
-    let game = currentGame();
+    let game = getAfter(gamePath()).data;
     return participant(game) && request.auth.uid == uid && withinDeadline(game) &&
      ((game.playerOneId == uid && !game.playerOneReady) ||
       (game.playerTwoId == uid && !game.playerTwoReady)) &&
@@ -219,7 +248,10 @@ service cloud.firestore {
    }
    match /tacticsDecks/{uid} {
     allow get: if signed() && request.auth.uid == uid && participant(currentGame());
-    allow create, update: if signed() && canEditDeck(uid) && validTacticsDeck(request.resource.data);
+    allow create: if signed() && canEditDeck(uid) &&
+     (validTacticsDeck(request.resource.data) ||
+      (!exists(gamePath()) && request.resource.data == {'cards': [], 'randomized': true}));
+    allow update: if signed() && canEditDeck(uid) && validTacticsDeck(request.resource.data);
    }
    match /tacticsPlays/{uid} {
     allow get: if signed() && participant(currentGame()) && currentGame().status == 'ACTIVE';

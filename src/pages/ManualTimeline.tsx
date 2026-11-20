@@ -4,11 +4,11 @@ import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTimi
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
 import type { Game } from '../models/game'
 import { changeActivation, finishMatch } from '../services/activationService'
-import { playTacticsCard, revertTacticsCard, watchTacticsPlays, type TacticsPlays } from '../services/tacticsService'
+import { drawnTacticsCards, playTacticsCard, type TacticsDeck, revertTacticsCard, watchTacticsPlays, type TacticsPlays } from '../services/tacticsService'
 
 const slots = Array.from({ length: 10 }, (_, index) => index + 1)
 
-export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; playerId: string; deck: string[]; phase: number }) {
+export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; playerId: string; deck: TacticsDeck; phase: number }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -51,7 +51,8 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
   const ownPlays = playsByPlayer[playerId]
   const lastPlay = ownPlays?.order.at(-1)
   const playedThisTurn = !!current && Object.values(ownPlays?.activationIds ?? {}).includes(current.id)
-  const availableCards = allTacticsCards.filter(card => deck.includes(card.id) && !ownPlays?.order.includes(card.id))
+  const drawn = drawnTacticsCards(deck, game, playerId)
+  const availableCards = allTacticsCards.filter(card => drawn.includes(card.id) && !ownPlays?.order.includes(card.id))
   const playable = (card: TacticsCard) => !!current && !!activeUnit && !playedThisTurn &&
     canPlayTacticsCard(card, ownTurn, current.paid, state.reaction, activeUnit.id,
       seat === 'one' ? game.playerOneSquad : game.playerTwoSquad)
@@ -304,8 +305,8 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       <strong>{revealed.name} · Fase {revealed.phase}, TL {revealed.slot}</strong>
       <p>{revealed.text}</p>
     </div>}
-    {deck.length > 0 && <section className="tactics-hand" aria-labelledby="tactics-hand-title">
-      <h3 id="tactics-hand-title">Il tuo mazzo tattico · {availableCards.length}/{deck.length}</h3>
+    {deck.cards.length > 0 && <section className="tactics-hand" aria-labelledby="tactics-hand-title">
+      <h3 id="tactics-hand-title">{deck.randomized ? 'Tactics Card pescate' : 'Il tuo mazzo tattico'} · {availableCards.length}/{drawn.length}</h3>
       <div className="tactics-controls">
         {availableCards.map(card => <button key={card.id} type="button" className="button secondary"
           aria-pressed={selectedTactic === card.id} disabled={saving || !ownPlays || !playable(card)}

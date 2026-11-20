@@ -1,5 +1,5 @@
 import { findUnitCard } from '../data/unitCards'
-import { collection, doc, onSnapshot, or, query, where, runTransaction, serverTimestamp, setDoc, type Unsubscribe } from 'firebase/firestore'
+import { collection, doc, onSnapshot, or, query, where, runTransaction, serverTimestamp, writeBatch, type Unsubscribe } from 'firebase/firestore'
 import type { Game } from '../models/game'
 import { matchActivity } from '../models/matchActivity'
 import type { MatchSize } from '../models/game'
@@ -8,7 +8,22 @@ const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const normalize = (code: string) => code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
 const reference = (code: string) => doc(getFirestoreService(), 'games', normalize(code))
 export function createGameCode() { return Array.from(crypto.getRandomValues(new Uint8Array(8)), (value) => alphabet[value % alphabet.length]).join('') }
-export async function createLobby(ownerId: string, ownerName: string, matchSize: MatchSize) { const code = createGameCode(); await setDoc(reference(code), { code, matchSize, status: 'WAITING', ownerId, playerOneId: ownerId, playerOneName: ownerName, playerTwoId: null, playerTwoName: null, playerOneTeam: null, playerTwoTeam: null, playerOneSquad: [], playerTwoSquad: [], playerOneReady: false, playerTwoReady: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); return code }
+export async function createLobby(ownerId: string, ownerName: string, matchSize: MatchSize, randomized = false) {
+  const code = createGameCode()
+  const db = getFirestoreService()
+  const game = doc(db, 'games', code)
+  const batch = writeBatch(db)
+  batch.set(game, {
+    code, matchSize, status: 'WAITING', ownerId, playerOneId: ownerId, playerOneName: ownerName,
+    playerTwoId: null, playerTwoName: null, playerOneTeam: null, playerTwoTeam: null,
+    playerOneSquad: [], playerTwoSquad: [], playerOneReady: false, playerTwoReady: false,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  })
+  if (randomized) batch.set(doc(game, 'tacticsDecks', ownerId), { cards: [], randomized })
+  await batch.commit()
+  return code
+}
+
 export async function joinLobby(code: string, playerId: string, playerName: string) { const gameCode = normalize(code); await runTransaction(getFirestoreService(), async (transaction) => { const snapshot = await transaction.get(reference(gameCode)); if (!snapshot.exists()) throw new Error('Partita non trovata. Verifica il codice condiviso.'); const game = snapshot.data(); if (game.status === 'FINISHED') throw new Error('Partita chiusa.'); const { expiresAt } = matchActivity(game as Game); if (expiresAt !== null && Date.now() >= expiresAt) throw new Error('Partita scaduta per inattività.'); if (game.playerOneId === playerId || game.playerTwoId === playerId) return; if (game.status !== 'WAITING' || game.playerTwoId !== null) throw new Error('Questa partita ha già due giocatori.'); const playerOneTeam = Math.random() < .5 ? 'RED' : 'BLUE'; transaction.update(reference(gameCode), { playerTwoId: playerId, playerTwoName: playerName, playerOneTeam, playerTwoTeam: playerOneTeam === 'RED' ? 'BLUE' : 'RED', status: 'SETUP', updatedAt: serverTimestamp() }) }); return gameCode }
 export async function setReady(code: string, playerId: string, playerOne: boolean, squad: string[]) {
   const db = getFirestoreService()
