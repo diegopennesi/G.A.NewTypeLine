@@ -59,3 +59,22 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
   color: #303c52;
   opacity: .8;
 }
+
+.timeline-slot[aria-current="step"] { border-color: #ffce7e; }
+.timeline-unit small { color: #eff4ff; font-size: .72rem; }
+.timeline-action-controls { display: grid; gap: .6rem; margin-top: .8rem; }
+.timeline-action-controls > summary { cursor: pointer; }
+.timeline-action-controls form, .timeline-action-controls label { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.timeline-action-controls label { margin-block: .45rem; }
+.timeline-action-controls input, .timeline-action-controls select, .timeline-instructions select {
+  max-width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid #657798;
+  border-radius: .45rem;
+  background: #141e31;
+  color: #eff4ff;
+  padding: .35rem .5rem;
+  font: inherit;
+}
+.timeline-action-controls input { width: 5rem; }
+.tactics-revealed .button { margin-top: .6rem; }
