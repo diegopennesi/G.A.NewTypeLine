@@ -15,7 +15,7 @@ I valori delle Unit Card sono provvisori. L’ordine di selezione determina l’
 
 ### Riprendere una partita
 
-Dalla dashboard, **Riprendi partita** mostra le lobby e le partite dell’account, con l’ultima mossa in GMT quando disponibile. Dopo un’ora di inattività la voce rimane visibile come **Scaduta** e l’app blocca il rientro. In una partita avviata l’ora parte dall’avvio e riparte a ogni spostamento di una Unit Card, giocata tattica o Revert. In preparazione conta l’ultimo aggiornamento della lobby.
+Dalla dashboard, **Riprendi partita** mostra le lobby e le partite dell’account, con l’ultima mossa in GMT quando disponibile. Dopo un’ora di inattività la voce scompare dalla dashboard e l’app blocca il rientro. In una partita avviata l’ora parte dall’avvio e riparte a ogni spostamento di una Unit Card, giocata tattica o Revert. In preparazione conta l’ultimo aggiornamento della lobby.
 
 Firestore salva `lastActionAt` usando l’orologio del server. Per le partite precedenti usa `updatedAt` come riferimento. Lo stato salvato rimane disponibile per consultare l’esito della scadenza, che viene calcolato al momento dell’accesso. Le regole bloccano nuove azioni dopo la scadenza. Lo storico completo delle mosse è ancora da implementare.
 
