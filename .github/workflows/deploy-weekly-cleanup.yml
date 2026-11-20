@@ -1,0 +1,24 @@
+name: Deploy Weekly Cleanup
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: GATypeLine
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci --prefix functions
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GANEWTYPELINE }}
+      - run: npx -y firebase-tools@latest deploy --only functions:cleanupExpiredGames --project ganewtypeline --non-interactive
