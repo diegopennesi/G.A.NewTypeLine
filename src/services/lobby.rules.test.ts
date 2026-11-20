@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firest
 
 import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
 import { playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
-import { changeActivation } from './activationService'
+import { changeActivation, finishMatch } from './activationService'
 import type { Game } from '../models/game'
 import { initialActivation, nextActivation } from '../models/activation'
 import { getFirestoreService } from './firestoreService'
@@ -387,4 +387,31 @@ it('registers official tactics in the correct reaction window and resumes the ac
   expect((await getDoc(doc(pc, path, 'tacticsPlays', 'phone'))).data()).toMatchObject({
     slots: { 'ST01-T08': 2 }, phases: { 'ST01-T08': 1 },
   })
+})
+
+it('lets a participant finish a completed match and prevents early closure', async () => {
+  const code = 'FINISH23'
+  const path = `games/${code}`
+  const squad = ['ST01-U001', 'ST01-U002', 'ST01-U003']
+  const units = ['one', 'two'].flatMap(seat => squad.map(id => ({
+    key: `${seat}/${id}`, id, seat, time: 21, reserve: false,
+  })))
+  const context = environment.authenticatedContext('pc')
+  const db = context.firestore()
+  const ref = doc(db, path)
+  vi.mocked(getFirestoreService).mockReturnValue(db as unknown as ReturnType<typeof getFirestoreService>)
+  await environment.withSecurityRulesDisabled(admin => setDoc(doc(admin.firestore(), path), {
+    ...game, code, status: 'ACTIVE', playerOneSquad: squad, playerTwoSquad: squad,
+    playerOneReady: true, playerTwoReady: true,
+    activation: { version: 2, round: 20, current: null, lastSeat: 'two', units: [{ ...units[0], time: 20 }, ...units.slice(1)] },
+  }))
+  await expect(finishMatch(code, 'pc')).rejects.toThrow('entrambe le fasi')
+  await assertFails(updateDoc(ref, { status: 'FINISHED', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() }))
+  await environment.withSecurityRulesDisabled(admin => updateDoc(doc(admin.firestore(), path), { 'activation.units': units }))
+  await finishMatch(code, 'pc')
+  await finishMatch(code, 'pc')
+  const otherRef = doc(environment.authenticatedContext('phone').firestore(), path)
+  const saved = (await getDoc(otherRef)).data()
+  expect(saved?.status).toBe('FINISHED')
+  expect(saved?.finishedAt.isEqual(saved.updatedAt)).toBe(true)
 })
