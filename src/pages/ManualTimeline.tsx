@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
@@ -14,6 +14,8 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
   const [notice, setNotice] = useState('')
   const [delta, setDelta] = useState('')
   const drag = useRef<{ x: number; y: number; id: number } | null>(null)
+  const [layout, setLayout] = useState<'grid' | 'wheel'>('grid')
+  const [wheelTime, setWheelTime] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
   const [reactionTiming, setReactionTiming] = useState<ReactionTiming>('beforeRoll')
   const [effectDelta, setEffectDelta] = useState('')
@@ -136,6 +138,48 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     update({ kind: 'initiative', one, two }, `Spareggio: ${game.playerOneName} ${one} · ${game.playerTwoName} ${two}.`)
   }
 
+  const phaseSlots = slots.map(slot => {
+    const time = (phase - 1) * 10 + slot
+    return {
+      slot, time, slotUnits: state.units.filter(unit => unit.time === time),
+      slotMarkers: markers.filter(marker => marker.phase === phase && marker.slot === slot),
+    }
+  })
+  const wheelSlot = phaseSlots.find(item => item.time === wheelTime) ??
+    phaseSlots.find(item => item.time === round) ?? phaseSlots[0]
+
+  function renderSlot({ slot, time, slotUnits, slotMarkers }: (typeof phaseSlots)[number]) {
+    return <>
+    {canLand(time)
+      ? <button type="button" className="timeline-destination" aria-label={`Sposta a TL ${slot}, fase ${phase}, +${costTo(time)} TL`}
+          onClick={() => payTo(time)}><span>{slot}</span><strong>+{costTo(time)} TL</strong></button>
+      : <span className="timeline-slot-number">{slot}</span>}
+    {slotMarkers.length > 0 && <div className="tactics-markers">
+      {slotMarkers.map(marker => <button key={marker.key} type="button"
+        className={`tactics-marker timeline-unit-${marker.team === 'RED' ? 'red' : 'blue'}`}
+        aria-label={`Leggi ${marker.name}, TL ${slot}`} aria-pressed={shownMarker === marker.key}
+        onClick={() => setShownMarker(shownMarker === marker.key ? null : marker.key)} />)}
+    </div>}
+    {slotUnits.map(unit => {
+      const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
+      const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
+      if (canPay && unit.key === current?.key) {
+        return <span className={`${className} timeline-drag-unit`} key={unit.key}
+          onPointerDown={startDrag} onPointerMove={moveDrag}
+          onPointerUp={event => finishDrag(event, true)}
+          onPointerCancel={event => finishDrag(event, false)}
+          onLostPointerCapture={event => finishDrag(event, false)}>{text}</span>
+      }
+      return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
+        ? <button className={className} type="button" key={unit.key} disabled={saving}
+            onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
+            {text}<small>Attiva</small>
+          </button>
+        : <span className={className} key={unit.key}>{text}</span>
+    })}
+    </>
+  }
+
   return <section className="manual-timeline" aria-labelledby="manual-timeline-title">
     <h2 id="manual-timeline-title">Timeline</h2>
     <div className="timeline-instructions">
@@ -162,44 +206,50 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </dialog>}
     {notice && <p role="status">{notice}</p>}
     {error && <p className="message error" role="alert">{error}</p>}
-    <div className="timeline-scroll" role="region" aria-label={`Caselle Timeline · fase ${phase}`} tabIndex={0}>
-      <ol className="timeline-grid">
-        {slots.map(slot => {
-          const time = (phase - 1) * 10 + slot
-          const slotUnits = state.units.filter(unit => unit.time === time)
-          const slotMarkers = markers.filter(marker => marker.phase === phase && marker.slot === slot)
-          return <li className="timeline-slot" key={slot} data-empty={slotUnits.length === 0 || undefined} data-timeline-time={time} data-drop-target={dropTarget === time || undefined} aria-current={time === round ? 'step' : undefined}>
-            {canLand(time)
-              ? <button type="button" className="timeline-destination" aria-label={`Sposta a TL ${slot}, fase ${phase}, +${costTo(time)} TL`}
-                  onClick={() => payTo(time)}><span>{slot}</span><strong>+{costTo(time)} TL</strong></button>
-              : <span className="timeline-slot-number">{slot}</span>}
-            {slotMarkers.length > 0 && <div className="tactics-markers">
-              {slotMarkers.map(marker => <button key={marker.key} type="button"
-                className={`tactics-marker timeline-unit-${marker.team === 'RED' ? 'red' : 'blue'}`}
-                aria-label={`Leggi ${marker.name}, TL ${slot}`} aria-pressed={shownMarker === marker.key}
-                onClick={() => setShownMarker(shownMarker === marker.key ? null : marker.key)} />)}
-            </div>}
-            {slotUnits.map(unit => {
-              const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
-              const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
-              if (canPay && unit.key === current?.key) {
-                return <span className={`${className} timeline-drag-unit`} key={unit.key}
-                  onPointerDown={startDrag} onPointerMove={moveDrag}
-                  onPointerUp={event => finishDrag(event, true)}
-                  onPointerCancel={event => finishDrag(event, false)}
-                  onLostPointerCapture={event => finishDrag(event, false)}>{text}</span>
-              }
-              return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
-                ? <button className={className} type="button" key={unit.key} disabled={saving}
-                    onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
-                    {text}<small>Attiva</small>
-                  </button>
-                : <span className={className} key={unit.key}>{text}</span>
-            })}
-          </li>
-        })}
-      </ol>
+    <div className="timeline-layout-switch" role="group" aria-label="Visualizzazione Timeline">
+      <button type="button" aria-pressed={layout === 'grid'} onClick={() => setLayout('grid')}>Griglia</button>
+      <button type="button" aria-pressed={layout === 'wheel'} onClick={() => setLayout('wheel')}>Circolare</button>
     </div>
+    {layout === 'grid' ? <div className="timeline-scroll" role="region" aria-label={`Caselle Timeline · fase ${phase}`} tabIndex={0}>
+      {[phaseSlots.slice(0, 5), phaseSlots.slice(5)].map(row =>
+        <ol key={row[0].slot} start={row[0].slot} className="timeline-grid"
+          style={{ '--timeline-mobile-columns': row.map(item => item.slotUnits.length > 0
+            ? 'minmax(44px, 1fr)' : 'minmax(44px, .42fr)').join(' ') } as CSSProperties}>
+          {row.map(item => <li className="timeline-slot" key={item.slot} data-empty={item.slotUnits.length === 0 || undefined}
+            data-timeline-time={item.time} data-drop-target={dropTarget === item.time || undefined}
+            aria-current={item.time === round ? 'step' : undefined}>{renderSlot(item)}</li>)}
+        </ol>)}
+    </div> : <div className="timeline-wheel-view">
+      <div className="timeline-wheel" role="group" aria-label={`Timeline circolare · fase ${phase}`}>
+        {phaseSlots.map(item => {
+          const angle = (item.slot - 1) * Math.PI / 5
+          const point = (a: number, radius: number) => `${50 + Math.sin(a) * radius}% ${50 - Math.cos(a) * radius}%`
+          const wedge = `polygon(50% 50%, ${point(angle - Math.PI / 10, 85)}, ${point(angle + Math.PI / 10, 85)})`
+          const red = item.slotUnits.some(unit => team(unit.seat) === 'RED')
+          const blue = item.slotUnits.some(unit => team(unit.seat) === 'BLUE')
+          return <button type="button" key={item.slot} className="timeline-wheel-sector"
+            aria-label={`TL ${item.slot}, ${item.slotUnits.length} MS, ${item.slotMarkers.length} carte giocate`}
+            aria-pressed={item.time === wheelSlot.time} aria-current={item.time === round ? 'step' : undefined}
+            data-timeline-time={item.time} data-drop-target={dropTarget === item.time || undefined}
+            onClick={() => setWheelTime(item.time)}
+            style={{ clipPath: wedge, '--sector-x': `${50 + Math.sin(angle) * 35}%`,
+              '--sector-y': `${50 - Math.cos(angle) * 35}%` } as CSSProperties}>
+            <span className="timeline-wheel-label">{item.slot}
+              <small aria-hidden="true">
+                {red && <i className="timeline-unit-red" />}
+                {blue && <i className="timeline-unit-blue" />}
+                {item.slotMarkers.length > 0 && <i className="timeline-wheel-marker" />}
+              </small>
+            </span>
+          </button>
+        })}
+      </div>
+      <div className="timeline-wheel-details timeline-slot" aria-label={`Unità e carte a TL ${wheelSlot.slot}`}>
+        {renderSlot(wheelSlot)}
+        {wheelSlot.slotUnits.length === 0 && wheelSlot.slotMarkers.length === 0 && !canLand(wheelSlot.time) &&
+          <p>Nessuna unità o carta su questa TL.</p>}
+      </div>
+    </div>}
     {current && <div className="timeline-action-controls">
       {state.reaction ? <>
         <p role="status">Reazione aperta · {reactionTimings[state.reaction]}</p>
@@ -225,7 +275,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
           {weapon.name} · {weapon.timelineCost} TL
         </button>)}
       </div>}
-      {!current.paid && <p>Tocca una TL evidenziata o trascina il MS sulla destinazione. Puoi cambiare fase accanto al codice partita.</p>}
+      {!current.paid && <p>Scegli la TL di destinazione o trascina il MS sulla casella. Puoi cambiare fase accanto al codice partita.</p>}
       {current.paid ? <button className="button" type="button" disabled={saving}
         onClick={() => update({ kind: 'end' }, 'Attivazione conclusa.')}>Termina attivazione</button>
         : <form onSubmit={event => { event.preventDefault(); update({ kind: 'pay', delta: Number(delta) }, 'Costo TL applicato.') }}>
