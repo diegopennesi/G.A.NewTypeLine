@@ -11,7 +11,7 @@ Le sei Unit Card ST01 usano la TL iniziale stampata. Puoi selezionare un’arma 
 ### Carte e mazzi
 
 - **Unit Card**. Le carte delle unità schierate sulla Timeline. Ogni giocatore ne sceglie 3 o 5 in base al formato.
-- **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte segnaposto, sia in 3v3 sia in 5v5. In partita, gioca una carta durante un’attivazione. Il quadratino resta sulla TL di origine dell’attivazione e apre il testo della carta. Una Response può essere registrata anche durante l’attivazione avversaria quando si verifica l’innesco. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
+- **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte dal catalogo ST01, EX01, EX02 e PA01, sia in 3v3 sia in 5v5. In partita, gioca una carta durante un’attivazione. Il quadratino resta sulla TL di origine dell’attivazione e apre il testo della carta. Per una Response, il giocatore attivo apre una finestra indicando il momento. L’altro giocatore può rispondere o passare per riprendere l’attivazione. Le carte Attack propongono il costo TL. Gli inneschi e gli effetti sul tabellone sono confermati al tavolo. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
 
 ### Riprendere una partita
 

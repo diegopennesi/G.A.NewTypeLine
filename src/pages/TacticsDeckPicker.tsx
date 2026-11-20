@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { tacticsCards, tacticsDeckSize } from '../data/tacticsCards'
+import { allTacticsCards, tacticsDeckSize } from '../data/tacticsCards'
 import { saveTacticsDeck } from '../services/tacticsService'
 
 export function TacticsDeckPicker({ code, playerId, deck, locked }: {
@@ -25,14 +25,14 @@ export function TacticsDeckPicker({ code, playerId, deck, locked }: {
 
   return <section className="squad-picker" aria-labelledby="tactics-picker-title">
     <h2 id="tactics-picker-title">Mazzo tattico · {cards.length}/{tacticsDeckSize}</h2>
-    <p className="lead">Scegli 9 Tactics Card segnaposto. Il mazzo è visibile solo a te.</p>
+    <p className="lead">Scegli 9 Tactics Card. Il mazzo è visibile solo a te.</p>
     <div className="unit-grid">
-      {tacticsCards.filter(card => !locked || deck.includes(card.id)).map(card => {
+      {allTacticsCards.filter(card => locked ? deck.includes(card.id) : card.kind || cards.includes(card.id)).map(card => {
         const chosen = cards.includes(card.id)
         return <button type="button" key={card.id} className={`unit-card ${chosen ? 'selected' : ''}`}
           aria-pressed={chosen} disabled={locked || saving || (!chosen && cards.length === tacticsDeckSize)}
           onClick={() => setDraft(chosen ? cards.filter(id => id !== card.id) : [...cards, card.id])}>
-          <b>{card.name}</b><span>{card.text}</span>
+          <b>{card.name}</b>{card.kind && <span>{card.id} · {card.kind}</span>}<span>{card.text}</span>
         </button>
       })}
     </div>

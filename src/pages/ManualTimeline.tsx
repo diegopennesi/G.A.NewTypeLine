@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
-import { tacticsCards } from '../data/tacticsCards'
+import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
 import type { Game } from '../models/game'
 import { changeActivation } from '../services/activationService'
@@ -15,6 +15,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const [delta, setDelta] = useState('')
   const drag = useRef<{ x: number; y: number; id: number } | null>(null)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const [reactionTiming, setReactionTiming] = useState<ReactionTiming>('beforeRoll')
   const [effectDelta, setEffectDelta] = useState('')
   const [targetKey, setTargetKey] = useState('')
   const [selectedTactic, setSelectedTactic] = useState<string | null>(null)
@@ -46,12 +47,15 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const ownPlays = playsByPlayer[playerId]
   const lastPlay = ownPlays?.order.at(-1)
   const playedThisTurn = !!current && Object.values(ownPlays?.activationIds ?? {}).includes(current.id)
-  const availableCards = tacticsCards.filter(card => deck.includes(card.id) && !ownPlays?.order.includes(card.id))
+  const availableCards = allTacticsCards.filter(card => deck.includes(card.id) && !ownPlays?.order.includes(card.id))
+  const playable = (card: TacticsCard) => !!current && !!activeUnit && !playedThisTurn &&
+    canPlayTacticsCard(card, ownTurn, current.paid, state.reaction, activeUnit.id,
+      seat === 'one' ? game.playerOneSquad : game.playerTwoSquad)
   const tactic = availableCards.find(card => card.id === selectedTactic)
   const markers = [game.playerOneId, game.playerTwoId].flatMap((uid, index) => {
     const plays = uid ? playsByPlayer[uid] : undefined
     return plays?.order.flatMap(id => {
-      const card = tacticsCards.find(candidate => candidate.id === id)
+      const card = allTacticsCards.find(candidate => candidate.id === id)
       return card ? [{ ...card, key: `${uid}/${id}`, team: team(index === 0 ? 'one' : 'two'),
         slot: plays.slots[id], phase: plays.phases?.[id] ?? 1 }] : []
     }) ?? []
@@ -82,7 +86,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
     void run(() => changeActivation(game.code, playerId, state.version, action), message)
   }
 
-  const canPay = ownTurn && !!current && !current.paid && !saving
+  const canPay = ownTurn && !!current && !current.paid && !saving && !state.reaction
   const costTo = (time: number) => time - (activeUnit?.time ?? time)
   const canLand = (time: number) => canPay && costTo(time) >= 1 && costTo(time) <= 20
 
@@ -181,7 +185,25 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
         })}
       </ol>
     </div>
-    {ownTurn && current && <div className="timeline-action-controls">
+    {current && <div className="timeline-action-controls">
+      {state.reaction ? <>
+        <p role="status">Reazione aperta · {reactionTimings[state.reaction]}</p>
+        {!ownTurn && <button className="button" type="button" disabled={saving}
+          onClick={() => update({ kind: 'closeReaction' }, 'Finestra di reazione chiusa.')}>
+          {playedThisTurn ? 'Concludi reazione' : 'Passa'}
+        </button>}
+      </> : ownTurn && <form onSubmit={event => {
+        event.preventDefault()
+        update({ kind: 'openReaction', timing: reactionTiming }, 'Finestra di reazione aperta.')
+      }}>
+        <label>Momento della reazione <select value={reactionTiming}
+          onChange={event => setReactionTiming(event.target.value as ReactionTiming)}>
+          {Object.entries(reactionTimings).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select></label>
+        <button className="button secondary" type="submit" disabled={saving}>Apri reazione</button>
+      </form>}
+    </div>}
+    {ownTurn && current && !state.reaction && <div className="timeline-action-controls">
       {!current.paid && weapons.length > 0 && <div className="tactics-controls" role="group" aria-label="Costo TL delle armi">
         {weapons.map(weapon => <button key={weapon.name} type="button" className="button secondary" disabled={saving}
           onClick={() => setDelta(String(weapon.timelineCost))}>
@@ -196,7 +218,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
           <button className="button" type="submit" disabled={saving || !delta}>Paga TL</button>
         </form>}
     </div>}
-    {!completed && <details className="timeline-action-controls">
+    {!completed && !state.reaction && <details className="timeline-action-controls">
       <summary>Effetti sulla Timeline</summary>
       <label>MS bersaglio <select value={targetKey} onChange={event => setTargetKey(event.target.value)}>
         <option value="">Scegli un MS</option>
@@ -221,9 +243,9 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
       <h3 id="tactics-hand-title">Il tuo mazzo tattico · {availableCards.length}/{deck.length}</h3>
       <div className="tactics-controls">
         {availableCards.map(card => <button key={card.id} type="button" className="button secondary"
-          aria-pressed={selectedTactic === card.id} disabled={saving || !ownPlays || !current || playedThisTurn || (!ownTurn && !card.response)}
+          aria-pressed={selectedTactic === card.id} disabled={saving || !ownPlays || !playable(card)}
           onClick={() => setSelectedTactic(selectedTactic === card.id ? null : card.id)}>
-          {card.name}{card.response ? ' · Response' : ''}
+          {card.name}{card.response ? ' · Response' : card.cost ? ` · ${card.cost} TL` : ''}
         </button>)}
         <button type="button" className="button revert-button" disabled={saving || !lastPlay}
           aria-label="Revert, annulla l’ultima Tactics Card giocata"
@@ -231,10 +253,13 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
           Revert
         </button>
       </div>
-      {tactic && current && !playedThisTurn && (ownTurn || tactic.response) && <div className="tactics-revealed">
+      {tactic && current && playable(tactic) && <div className="tactics-revealed">
         <p>{tactic.text}</p>
         <button className="button" type="button" disabled={saving}
-          onClick={() => void run(() => playTacticsCard(game.code, playerId, tactic.id, roundSlot(current.time), current.id), 'Tactics Card giocata.')}>
+          onClick={() => void run(async () => {
+            await playTacticsCard(game.code, playerId, tactic.id, roundSlot(current.time), current.id)
+            if (tactic.cost) setDelta(String(tactic.cost))
+          }, tactic.cost ? `Tactics Card giocata. Conferma il costo di ${tactic.cost} TL.` : 'Tactics Card giocata.')}>
           {tactic.response ? 'Conferma innesco e gioca' : 'Gioca'} · TL {roundSlot(current.time)}
         </button>
       </div>}

@@ -1,5 +1,5 @@
 import { doc, onSnapshot, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore'
-import { tacticsCards, tacticsDeckSize } from '../data/tacticsCards'
+import { allTacticsCards, canPlayTacticsCard, tacticsDeckSize } from '../data/tacticsCards'
 import { roundPhase, roundSlot } from '../models/activation'
 import type { Game } from '../models/game'
 import { getFirestoreService } from './firestoreService'
@@ -15,7 +15,7 @@ export function watchTacticsDeck(code: string, uid: string, onDeck: (deck: strin
 
 export async function saveTacticsDeck(code: string, uid: string, cards: string[]) {
   if (cards.length !== tacticsDeckSize || new Set(cards).size !== tacticsDeckSize ||
-      cards.some(id => !tacticsCards.some(card => card.id === id))) {
+      cards.some(id => !allTacticsCards.some(card => card.id === id))) {
     throw new Error('Scegli 9 Tactics Card diverse.')
   }
   await setDoc(doc(getFirestoreService(), 'games', code, 'tacticsDecks', uid), { cards })
@@ -35,11 +35,13 @@ export async function playTacticsCard(code: string, uid: string, id: string, slo
     const plays = (await transaction.get(ref)).data() as TacticsPlays | undefined
     if (plays?.order.includes(id)) throw new Error('Questa carta è già sulla Timeline.')
     const current = match?.activation?.current
-    const card = tacticsCards.find(candidate => candidate.id === id)
-    if (match?.activation || expectedActivationId !== undefined) {
+    const card = allTacticsCards.find(candidate => candidate.id === id)
+    if (card?.kind || match?.activation || expectedActivationId !== undefined) {
       const seat = match?.playerOneId === uid ? 'one' : 'two'
       if (!current || current.id !== expectedActivationId || roundSlot(current.time) !== slot ||
-          (!current.key.startsWith(`${seat}/`) && !card?.response) ||
+          !card || !match || !canPlayTacticsCard(card, current.key.startsWith(`${seat}/`),
+            current.paid, match.activation?.reaction, current.key.split('/')[1],
+            seat === 'one' ? match.playerOneSquad : match.playerTwoSquad) ||
           Object.values(plays?.activationIds ?? {}).includes(current.id)) {
         throw new Error('Questa carta non è giocabile nell’attivazione corrente.')
       }
