@@ -260,6 +260,19 @@ service cloud.firestore {
       request.resource.data.playerOneName == (request.auth.uid == resource.data.playerOneId ? resource.data.playerTwoName : resource.data.playerOneName) &&
       request.resource.data.playerOneSquad.size() == 0 && request.resource.data.playerTwoSquad.size() == 0)
     );
+   function phasesComplete(d) {
+    let state = d.activation;
+    let units = state.units;
+    return state.current == null && state.get('reaction', null) == null &&
+     units[0].time > 20 && units[1].time > 20 && units[2].time > 20 &&
+     units[3].time > 20 && units[4].time > 20 && units[5].time > 20 &&
+     (units.size() == 6 || (units.size() == 10 &&
+      units[6].time > 20 && units[7].time > 20 && units[8].time > 20 && units[9].time > 20));
+   }
+   allow update: if participant(resource.data) && activeWithinDeadline(resource.data) &&
+    request.resource.data.status == 'FINISHED' && phasesComplete(resource.data) &&
+    request.resource.data.updatedAt == request.time && request.resource.data.finishedAt == request.time &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','finishedAt']);
    // Keep the parent until scheduled cleanup can remove its private decks.
    allow update: if signed() && resource.data.ownerId == request.auth.uid &&
     resource.data.status == 'WAITING' && request.resource.data.status == 'FINISHED' &&

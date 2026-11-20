@@ -18,3 +18,18 @@ export async function changeActivation(code: string, uid: string, version: numbe
     return activation
   })
 }
+
+export async function finishMatch(code: string, uid: string) {
+  const db = getFirestoreService()
+  const ref = doc(db, 'games', code)
+  await runTransaction(db, async transaction => {
+    const game = (await transaction.get(ref)).data() as Game | undefined
+    if (!game || ![game.playerOneId, game.playerTwoId].includes(uid)) throw new Error('Partita non disponibile.')
+    if (game.status === 'FINISHED') return
+    const state = game.activation
+    if (game.status !== 'ACTIVE' || !state || state.current || state.reaction || state.units.some(unit => unit.time <= 20)) {
+      throw new Error('Concludi entrambe le fasi prima di chiudere la partita.')
+    }
+    transaction.update(ref, { status: 'FINISHED', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  })
+}

@@ -3,12 +3,12 @@ import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
 import type { Game } from '../models/game'
-import { changeActivation } from '../services/activationService'
+import { changeActivation, finishMatch } from '../services/activationService'
 import { playTacticsCard, revertTacticsCard, watchTacticsPlays, type TacticsPlays } from '../services/tacticsService'
 
 const slots = Array.from({ length: 10 }, (_, index) => index + 1)
 
-export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId: string; deck: string[] }) {
+export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; playerId: string; deck: string[]; phase: number }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -20,7 +20,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const [targetKey, setTargetKey] = useState('')
   const [selectedTactic, setSelectedTactic] = useState<string | null>(null)
   const [shownMarker, setShownMarker] = useState<string | null>(null)
-  const [viewPhase, setViewPhase] = useState<number | null>(null)
+  const finishDialog = useRef<HTMLDialogElement>(null)
   const [playsByPlayer, setPlaysByPlayer] = useState<Record<string, TacticsPlays>>({})
   useEffect(() => {
     const stop = [game.playerOneId, game.playerTwoId].flatMap(uid => uid ? [
@@ -40,7 +40,6 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const weapons = findUnitCard(activeUnit?.id)?.stats?.weapons ?? []
   const completed = !current && next.time > 20
   const round = current?.time ?? next.time
-  const phase = viewPhase ?? (completed ? 2 : roundPhase(round))
   const team = (side: 'one' | 'two') => side === 'one' ? game.playerOneTeam : game.playerTwoTeam
   const label = (id?: string) => {
     const card = findUnitCard(id)
@@ -145,18 +144,31 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
         : next.tie ? `Spareggio a TL ${roundSlot(round)}`
         : `Prossimo MS: ${label(next.unit?.id)} · Fase ${roundPhase(round)}, TL ${roundSlot(round)}`}</p>
       {!current && next.tie && !completed && <button type="button" disabled={saving} onClick={rollInitiative}>Tira i dadi</button>}
-      <label>Vista <select value={viewPhase ?? ''} onChange={event => setViewPhase(event.target.value ? Number(event.target.value) : null)}>
-        <option value="">Fase corrente</option><option value={1}>Fase 1</option><option value={2}>Fase 2</option>
-      </select></label>
+      {completed && <button className="button" type="button" onClick={() => finishDialog.current?.showModal()}>Concludi partita</button>}
     </div>
+    {completed && <dialog ref={finishDialog} className="finish-match-dialog" aria-labelledby="finish-match-title">
+      <h3 id="finish-match-title">Concludere la partita?</h3>
+      <p>Entrambi i giocatori vedranno la partita come conclusa.</p>
+      <div className="tactics-controls">
+        <button type="button" className="button secondary" autoFocus disabled={saving}
+          onClick={() => finishDialog.current?.close()}>Annulla</button>
+        <button type="button" className="button" disabled={saving}
+          onClick={() => void run(async () => {
+            await finishMatch(game.code, playerId)
+            finishDialog.current?.close()
+          }, 'Partita conclusa.')}>{saving ? 'Salvataggio…' : 'Conferma conclusione'}</button>
+      </div>
+      {error && <p className="message error" role="alert">{error}</p>}
+    </dialog>}
     {notice && <p role="status">{notice}</p>}
     {error && <p className="message error" role="alert">{error}</p>}
     <div className="timeline-scroll" role="region" aria-label={`Caselle Timeline · fase ${phase}`} tabIndex={0}>
       <ol className="timeline-grid">
         {slots.map(slot => {
           const time = (phase - 1) * 10 + slot
+          const slotUnits = state.units.filter(unit => unit.time === time)
           const slotMarkers = markers.filter(marker => marker.phase === phase && marker.slot === slot)
-          return <li className="timeline-slot" key={slot} data-timeline-time={time} data-drop-target={dropTarget === time || undefined} aria-current={time === round ? 'step' : undefined}>
+          return <li className="timeline-slot" key={slot} data-empty={slotUnits.length === 0 || undefined} data-timeline-time={time} data-drop-target={dropTarget === time || undefined} aria-current={time === round ? 'step' : undefined}>
             {canLand(time)
               ? <button type="button" className="timeline-destination" aria-label={`Sposta a TL ${slot}, fase ${phase}, +${costTo(time)} TL`}
                   onClick={() => payTo(time)}><span>{slot}</span><strong>+{costTo(time)} TL</strong></button>
@@ -167,7 +179,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
                 aria-label={`Leggi ${marker.name}, TL ${slot}`} aria-pressed={shownMarker === marker.key}
                 onClick={() => setShownMarker(shownMarker === marker.key ? null : marker.key)} />)}
             </div>}
-            {state.units.filter(unit => unit.time === time).map(unit => {
+            {slotUnits.map(unit => {
               const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
               const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
               if (canPay && unit.key === current?.key) {
@@ -213,7 +225,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
           {weapon.name} · {weapon.timelineCost} TL
         </button>)}
       </div>}
-      {!current.paid && <p>Tocca una TL evidenziata o trascina il MS sulla destinazione. Puoi cambiare fase dalla vista.</p>}
+      {!current.paid && <p>Tocca una TL evidenziata o trascina il MS sulla destinazione. Puoi cambiare fase accanto al codice partita.</p>}
       {current.paid ? <button className="button" type="button" disabled={saving}
         onClick={() => update({ kind: 'end' }, 'Attivazione conclusa.')}>Termina attivazione</button>
         : <form onSubmit={event => { event.preventDefault(); update({ kind: 'pay', delta: Number(delta) }, 'Costo TL applicato.') }}>
