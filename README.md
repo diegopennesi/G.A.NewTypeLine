@@ -6,7 +6,7 @@ Web app multiplayer per la Timeline di Gundam Assemble, con autenticazione Fireb
 
 Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 18 carte placeholder. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
 
-I valori delle carte sono provvisori. L’ordine di selezione determina l’ordine delle proprie unità sulla stessa casella. Attivazioni, spareggio iniziale, combattimento e avanzamento delle fasi non sono ancora implementati. Durante il setup l’uscita libera il posto e azzera le conferme; dopo l’avvio si può tornare alla dashboard senza abbandonare la partita.
+I valori delle carte sono provvisori. L’ordine di selezione determina l’ordine delle proprie unità sulla stessa casella. In partita, tocca una tua carta e scegli una destinazione tra TL 1 e TL 10. Ogni casella disponibile mostra lo spostamento in TL. Le posizioni vengono salvate e sincronizzate tra i due giocatori. Attivazioni, spareggio iniziale, combattimento e avanzamento delle fasi non sono ancora implementati. Durante il setup l’uscita libera il posto e azzera le conferme; dopo l’avvio si può tornare alla dashboard senza abbandonare la partita.
 
 ### Test locali delle regole e dei servizi
 

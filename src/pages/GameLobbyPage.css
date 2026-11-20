@@ -12,3 +12,22 @@
 .inline-button { display: inline-block; text-decoration: none; }
 @media (max-width: 560px) { .invite-card { grid-template-columns: 1fr; }.qr-code { width: fit-content; }.share-code strong { font-size: 1.45rem; } }
 .squad-picker { margin: 1.5rem 0; }.squad-picker h2 { font-size: 1.2rem; }.unit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }.unit-card { display: grid; gap: .35rem; min-height: 7rem; border: 1px solid #53617f; border-radius: .65rem; padding: .75rem; background: #151c2e; color: #dfe6fa; text-align: left; }.unit-card span { color: #aeb9d3; font-size: .8rem; }.unit-card.selected { border-color: #e4b058; background: #2c2921; }
+
+.lobby-page-active { max-width: 76rem; }
+.manual-timeline { margin-block: 1.5rem; padding: clamp(.75rem, 2vw, 1.25rem); border: 1px solid #35415d; border-radius: .9rem; background: #151c2e; }
+.manual-timeline h2 { margin: 0; font-size: 1.2rem; }
+.timeline-instructions { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; margin-block: .4rem .85rem; color: #c9d1e5; }
+.timeline-instructions p { margin: 0; }
+.timeline-instructions button { min-height: 44px; padding-inline: .8rem; border: 1px solid #657390; border-radius: .45rem; background: transparent; color: #f4f6ff; }
+.timeline-scroll { overflow-x: auto; padding: .2rem; scrollbar-color: #657390 #151c2e; }
+.timeline-grid { display: grid; grid-template-columns: repeat(5, minmax(5.5rem, 1fr)); gap: .4rem; list-style: none; margin: 0; padding: 0; }
+.timeline-slot { display: flex; flex-direction: column; align-items: stretch; gap: .3rem; min-height: 6.5rem; padding: .3rem; border: 1px solid #35415d; border-radius: .5rem; background: #101626; }
+.timeline-slot-number, .timeline-destination { display: grid; place-content: center; min-height: 44px; text-align: center; color: #e3e9fa; font-variant-numeric: tabular-nums; }
+.timeline-destination { border: 1px dashed #8996b4; border-radius: .35rem; background: #222d44; font: inherit; }
+.timeline-destination strong { color: #ffce7e; font-size: .8rem; }
+.timeline-unit { display: grid; place-items: center; min-height: 44px; padding: .3rem; border: 1px solid transparent; border-radius: .3rem; color: #fff; text-align: center; font: inherit; font-size: .8rem; line-height: 1.15; overflow-wrap: anywhere; }
+.timeline-unit-red { background: #a23e36; }
+.timeline-unit-blue { background: #2458c4; }
+button.timeline-unit, .timeline-destination, .timeline-instructions button { cursor: pointer; }
+button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { outline: 2px solid #ffce7e; outline-offset: 1px; }
+.manual-timeline button:disabled { cursor: wait; }

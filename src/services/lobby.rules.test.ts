@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 
-import { createLobby, joinLobby, leaveLobby, setReady, subscribeToLobby } from './lobbyService'
+import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby } from './lobbyService'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
 
@@ -153,4 +153,36 @@ it('notifica entrambi i client e ripristina le squadre dopo una nuova sottoscriz
     try { await vi.waitFor(() => expect(restored).toEqual(squad)) } finally { stopReload() }
     expect(errors).toEqual([])
   } finally { stopPC(); stopPhone() }
+})
+
+it('saves manual moves independently for both players and rejects invalid edits', async () => {
+  const code = 'MOVETL23'
+  const squad = ['placeholder-1', 'placeholder-2', 'placeholder-3']
+  const path = `games/${code}`
+  await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), path), {
+    ...game, code, status: 'ACTIVE', playerOneReady: true, playerTwoReady: true,
+    playerOneSquad: squad, playerTwoSquad: squad,
+  }))
+
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  const first = moveTimelineUnit(code, 'pc', 'placeholder-1', 1, 10)
+  vi.mocked(getFirestoreService).mockReturnValue(phone as unknown as ReturnType<typeof getFirestoreService>)
+  await Promise.all([first, moveTimelineUnit(code, 'phone', 'placeholder-1', 1, 4)])
+
+  const ref = doc(pc, path)
+  const saved = (await getDoc(ref)).data()
+  expect(saved?.playerOneTimeline).toEqual({ 'placeholder-1': 10 })
+  expect(saved?.playerTwoTimeline).toEqual({ 'placeholder-1': 4 })
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  await expect(moveTimelineUnit(code, 'pc', 'placeholder-1', 1, 2)).rejects.toThrow('già stata spostata')
+  await expect(moveTimelineUnit(code, 'pc', 'placeholder-1', 10, 11)).rejects.toThrow('TL 10')
+  await assertFails(updateDoc(ref, { playerTwoTimeline: { 'placeholder-1': 7 }, updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 11 }, updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 10, 'placeholder-4': 7 }, updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9, 'placeholder-2': 8 }, updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9 }, status: 'WAITING', updatedAt: serverTimestamp() }))
+  await moveTimelineUnit(code, 'pc', 'placeholder-1', 10, 1)
+  expect((await getDoc(ref)).data()?.playerOneTimeline).toEqual({ 'placeholder-1': 1 })
 })

@@ -40,3 +40,31 @@ export async function setReady(code: string, playerId: string, playerOne: boolea
 }
 export async function leaveLobby(code: string, playerId: string) { await runTransaction(getFirestoreService(), async (transaction) => { const snapshot = await transaction.get(reference(code)); if (!snapshot.exists()) return; const game = snapshot.data(); if (game.status === 'ACTIVE') throw new Error('La partita è già avviata.'); const reset = { playerOneSquad: [], playerTwoSquad: [], playerOneReady: false, playerTwoReady: false, playerOneTeam: null, playerTwoTeam: null }; if (game.playerTwoId === playerId) transaction.update(reference(code), { ...reset, playerTwoId: null, playerTwoName: null, status: 'WAITING', updatedAt: serverTimestamp() }); else if (game.playerOneId === playerId && game.playerTwoId) transaction.update(reference(code), { ...reset, ownerId: game.playerTwoId, playerOneId: game.playerTwoId, playerOneName: game.playerTwoName, playerTwoId: null, playerTwoName: null, status: 'WAITING', updatedAt: serverTimestamp() }); else if (game.playerOneId === playerId) transaction.delete(reference(code)); }) }
 export function subscribeToLobby(code: string, onGame: (game: Game | null) => void, onError: (error: Error) => void): Unsubscribe { return onSnapshot(reference(code), (snapshot) => onGame(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as Game : null), onError) }
+
+export async function moveTimelineUnit(code: string, playerId: string, unitId: string, from: number, to: number) {
+  if (!Number.isInteger(to) || to < 1 || to > 10 || to === from) {
+    throw new Error('Scegli una casella diversa tra TL 1 e TL 10.')
+  }
+
+  const db = getFirestoreService()
+  const ref = doc(db, 'games', normalize(code))
+  await runTransaction(db, async transaction => {
+    const game = (await transaction.get(ref)).data()
+    if (game?.status !== 'ACTIVE' || ![game.playerOneId, game.playerTwoId].includes(playerId)) {
+      throw new Error('La partita non è disponibile.')
+    }
+
+    const isPlayerOne = game.playerOneId === playerId
+    const field = isPlayerOne ? 'playerOneTimeline' : 'playerTwoTimeline'
+    const squad = isPlayerOne ? game.playerOneSquad : game.playerTwoSquad
+    const unit = placeholderUnits.find(candidate => candidate.id === unitId)
+    if (!unit || !squad.includes(unitId)) throw new Error('Questa unità non fa parte della tua squadra.')
+
+    const positions = game[field] ?? {}
+    if ((positions[unitId] ?? unit.startingTimeline) !== from) {
+      throw new Error('L’unità è già stata spostata. Selezionala di nuovo.')
+    }
+
+    transaction.update(ref, { [field]: { ...positions, [unitId]: to }, updatedAt: serverTimestamp() })
+  })
+}
