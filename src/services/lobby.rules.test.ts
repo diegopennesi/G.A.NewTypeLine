@@ -5,6 +5,8 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firest
 
 import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
 import { playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
+import { changeActivation } from './activationService'
+import { nextActivation } from '../models/activation'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
 
@@ -284,4 +286,61 @@ it('expires old lobbies and denies moves that would revive an expired match', as
     playerTwoId: 'phone', playerTwoName: 'Phone', playerOneTeam: 'RED', playerTwoTeam: 'BLUE',
     status: 'SETUP', updatedAt: serverTimestamp(),
   }))
+})
+
+it('coordinates activation, fixed tactic markers, phase wrap and out-of-turn effects', async () => {
+  const code = 'TURNAB23'
+  const path = `games/${code}`
+  const squad = ['placeholder-1', 'placeholder-2', 'placeholder-3']
+  const positions = Object.fromEntries(squad.map((id, index) => [id, index < 2 ? 8 : 10]))
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore()
+    await setDoc(doc(db, path), {
+      ...game, code, status: 'ACTIVE', playerOneReady: true, playerTwoReady: true,
+      playerOneSquad: squad, playerTwoSquad: squad, playerOneTimeline: positions, playerTwoTimeline: positions,
+    })
+    await Promise.all(['pc', 'phone'].map(uid => setDoc(doc(db, path, 'tacticsDecks', uid), {
+      cards: ['tactic-01', 'tactic-02', 'tactic-03', 'tactic-04', 'tactic-05', 'tactic-06', 'tactic-07', 'tactic-08', 'tactic-11'],
+    })))
+  })
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  const use = (db: typeof pc) => vi.mocked(getFirestoreService).mockReturnValue(db as unknown as ReturnType<typeof getFirestoreService>)
+  use(pc)
+  await expect(changeActivation(code, 'pc', 0, { kind: 'start', key: 'one/placeholder-1' })).rejects.toThrow('ancora')
+  let state = await changeActivation(code, 'pc', 0, { kind: 'initiative', one: 9, two: 3 })
+  expect(nextActivation(state).unit?.key).toBe('one/placeholder-1')
+  await expect(changeActivation(code, 'pc', 1, { kind: 'start', key: 'one/placeholder-2' })).rejects.toThrow('ancora')
+  state = await changeActivation(code, 'pc', 1, { kind: 'start', key: 'one/placeholder-1' })
+  state = await changeActivation(code, 'pc', 2, { kind: 'pay', delta: 4 })
+  expect(state.units.at(-1)?.time).toBe(12)
+  expect(state.current?.time).toBe(8)
+  await expect(changeActivation(code, 'pc', 2, { kind: 'end' })).rejects.toThrow('cambiata')
+  await assertFails(moveTimelineUnit(code, 'pc', squad[0], 8, 9))
+  await expect(playTacticsCard(code, 'pc', 'tactic-01', 2, 2)).rejects.toThrow('non è giocabile')
+  await playTacticsCard(code, 'pc', 'tactic-01', 8, 2)
+  await expect(playTacticsCard(code, 'pc', 'tactic-02', 8, 2)).rejects.toThrow('non è giocabile')
+  use(phone)
+  await expect(playTacticsCard(code, 'phone', 'tactic-01', 8, 2)).rejects.toThrow('non è giocabile')
+  await playTacticsCard(code, 'phone', 'tactic-11', 8, 2)
+  await expect(changeActivation(code, 'phone', 3, { kind: 'end' })).rejects.toThrow('costo')
+  state = await changeActivation(code, 'phone', 3, { kind: 'effect', key: 'two/placeholder-3', delta: -1 })
+  expect(state.current?.key).toBe('one/placeholder-1')
+  expect(state.units.at(-1)?.time).toBe(9)
+  state = await changeActivation(code, 'phone', 4, { kind: 'defeat', key: 'one/placeholder-1' })
+  expect(state.current).toBeNull()
+  expect(state.units.at(-1)).toMatchObject({ key: 'one/placeholder-1', time: 14, reserve: true })
+  expect(nextActivation(state).unit?.key).toBe('two/placeholder-1')
+  expect((await getDoc(doc(phone, path, 'tacticsPlays', 'pc'))).data()).toMatchObject({
+    slots: { 'tactic-01': 8 }, phases: { 'tactic-01': 1 },
+  })
+  state = await changeActivation(code, 'phone', 5, { kind: 'start', key: 'two/placeholder-1' })
+  await expect(changeActivation(code, 'phone', 6, { kind: 'effect', key: 'two/placeholder-3', delta: -2 })).rejects.toThrow('round corrente')
+  state = await changeActivation(code, 'phone', 6, { kind: 'pay', delta: 1 })
+  const destinationPile = state.units.filter(unit => unit.seat === 'two' && unit.time === 9)
+  expect(destinationPile.map(unit => unit.key)).toEqual(['two/placeholder-3', 'two/placeholder-1'])
+  state = await changeActivation(code, 'phone', 7, { kind: 'end' })
+  expect(state.current).toBeNull()
+  expect(nextActivation(state).unit?.key).toBe('one/placeholder-2')
+
 })

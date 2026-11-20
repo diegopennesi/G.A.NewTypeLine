@@ -54,30 +54,87 @@ service cloud.firestore {
     d.cards.size() == 9 && d.cards.toSet().size() == 9 && d.cards.hasOnly(tacticsIds());
   }
   function validTacticsPlays(d) {
-   return d.keys().hasOnly(['order','slots','changedAt']) && d.changedAt == request.time && d.order is list && d.slots is map &&
+   return d.keys().hasOnly(['order','slots','phases','activationIds','changedAt']) && d.changedAt == request.time && d.order is list && d.slots is map &&
     d.order.size() <= 9 && d.order.toSet().size() == d.order.size() &&
     d.order.hasOnly(tacticsIds()) && d.slots.keys().toSet() == d.order.toSet() &&
-    d.slots.values().hasOnly([1,2,3,4,5,6,7,8,9,10]);
+    d.slots.values().hasOnly([1,2,3,4,5,6,7,8,9,10]) &&
+    d.get('phases', {}).keys().hasOnly(d.order) && d.get('phases', {}).values().hasOnly([1,2]) &&
+    d.get('activationIds', {}).keys().hasOnly(d.order) &&
+    d.get('activationIds', {}).values().toSet().size() == d.get('activationIds', {}).size();
   }
   function appendTacticsPlay(before, after, deck) {
    let id = after.order[after.order.size() - 1];
    return id in deck && !(id in before.order) &&
     after.order == before.order.concat([id]) &&
-    after.slots.diff(before.slots).affectedKeys().hasOnly([id]);
+    after.slots.diff(before.slots).affectedKeys().hasOnly([id]) &&
+    after.get('phases', {}).diff(before.get('phases', {})).affectedKeys().hasOnly([id]) &&
+    after.get('activationIds', {}).diff(before.get('activationIds', {})).affectedKeys().hasOnly([id]);
   }
   function revertTacticsPlay(before, after) {
    let id = before.order[before.order.size() - 1];
    return before.order == after.order.concat([id]) &&
-    after.slots.diff(before.slots).affectedKeys().hasOnly([id]);
+    after.slots.diff(before.slots).affectedKeys().hasOnly([id]) &&
+    after.get('phases', {}).diff(before.get('phases', {})).affectedKeys().hasOnly([id]) &&
+    after.get('activationIds', {}).diff(before.get('activationIds', {})).affectedKeys().hasOnly([id]);
   }
   match /games/{code} {
    // A deck is readable only by its owner. The separate plays document contains revealed cards.
    function gamePath() { return /databases/$(database)/documents/games/$(code); }
    function currentGame() { return get(gamePath()).data; }
+   function writesActivation() {
+    let before = resource.data.get('activation', {'version': 0});
+    let next = request.resource.data.activation;
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt']) &&
+     next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind']) &&
+     next.version is int && next.version == before.version + 1 &&
+     next.units is list && next.units.size() == resource.data.playerOneSquad.size() + resource.data.playerTwoSquad.size() &&
+     next.round is int && next.round >= before.get('round', 1) && next.round <= 20 &&
+     next.lastSeat in [null,'one','two'] &&
+     (next.current == null || (next.current is map &&
+      next.current.keys().hasOnly(['key','time','paid','id']) &&
+      next.current.key is string && next.current.time == next.round &&
+      next.current.paid is bool && next.current.id is int)) &&
+     validActivationTransition(before, next);
+   }
+   function ownsActivation(current) {
+    let side = resource.data.playerOneId == request.auth.uid ? 'one' : 'two';
+    return current != null && current.key.matches(side + '/.*');
+   }
+   function validActivationTransition(before, next) {
+    let current = before.get('current', null);
+    let lastSeat = before.get('lastSeat', null);
+    return
+     (next.lastKind == 'initiative' && current == null && next.current == null &&
+      lastSeat == null && next.lastSeat != null) ||
+     (next.lastKind == 'start' && current == null && ownsActivation(next.current) &&
+      next.current.id == next.version && !next.current.paid && next.lastSeat == lastSeat) ||
+     (next.lastKind == 'pay' && ownsActivation(current) && !current.paid &&
+      next.current == {'key': current.key, 'time': current.time, 'id': current.id, 'paid': true} &&
+      next.lastSeat == lastSeat) ||
+     (next.lastKind == 'end' && ownsActivation(current) && current.paid &&
+      next.current == null && next.units == before.units &&
+      next.lastSeat == (resource.data.playerOneId == request.auth.uid ? 'one' : 'two')) ||
+     (next.lastKind == 'effect' && next.current == current && next.lastSeat == lastSeat) ||
+     (next.lastKind == 'defeat' && (
+      (next.current == current && next.lastSeat == lastSeat) ||
+      (current != null && next.current == null &&
+       next.lastSeat == (current.key.matches('one/.*') ? 'one' : 'two'))));
+   }
    function recordsTacticsAction() {
     let uid = request.auth.uid;
     return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt','lastActionAt']) &&
      getAfter(/databases/$(database)/documents/games/$(code)/tacticsPlays/$(uid)).data.changedAt == request.time;
+   }
+   function tacticsTiming(d, uid) {
+    let game = currentGame();
+    let current = game.get('activation', {}).get('current', null);
+    let id = d.order[d.order.size() - 1];
+    let seat = game.playerOneId == uid ? 'one' : 'two';
+    return !('activation' in game) || (current != null &&
+     (current.key.matches(seat + '/.*') || id in ['tactic-11','tactic-12']) &&
+     d.get('activationIds', {}).get(id, 0) == current.id &&
+     d.get('phases', {}).get(id, 0) == (current.time <= 10 ? 1 : 2) &&
+     d.slots[id] == (current.time <= 10 ? current.time : current.time - 10));
    }
    function ownDeck(uid) { return get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards; }
    function ownsActivePlays(uid) {
@@ -99,10 +156,10 @@ service cloud.firestore {
    match /tacticsPlays/{uid} {
     allow get: if signed() && participant(currentGame()) && currentGame().status == 'ACTIVE';
     allow create: if signed() && ownsActivePlays(uid) && validTacticsPlays(request.resource.data) &&
-     request.resource.data.order.size() == 1 &&
+     request.resource.data.order.size() == 1 && tacticsTiming(request.resource.data, uid) &&
      appendTacticsPlay({'order': [], 'slots': {}}, request.resource.data, ownDeck(uid));
     allow update: if signed() && ownsActivePlays(uid) && validTacticsPlays(request.resource.data) &&
-     ((request.resource.data.order.size() > resource.data.order.size() &&
+     ((request.resource.data.order.size() > resource.data.order.size() && tacticsTiming(request.resource.data, uid) &&
        appendTacticsPlay(resource.data, request.resource.data, ownDeck(uid))) ||
       (request.resource.data.order.size() < resource.data.order.size() &&
        revertTacticsPlay(resource.data, request.resource.data)));
@@ -114,9 +171,9 @@ service cloud.firestore {
     request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
    allow update: if signed() && activeWithinDeadline(resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.lastActionAt == request.time && (
-    (participant(resource.data) && recordsTacticsAction()) ||
-    (request.auth.uid == resource.data.playerOneId && manualMove('playerOneTimeline', resource.data.playerOneSquad)) ||
-    (request.auth.uid == resource.data.playerTwoId && manualMove('playerTwoTimeline', resource.data.playerTwoSquad)));
+    (participant(resource.data) && (recordsTacticsAction() || writesActivation())) ||
+    (!('activation' in resource.data) && request.auth.uid == resource.data.playerOneId && manualMove('playerOneTimeline', resource.data.playerOneSquad)) ||
+    (!('activation' in resource.data) && request.auth.uid == resource.data.playerTwoId && manualMove('playerTwoTimeline', resource.data.playerTwoSquad)));
    allow update: if signed() && valid(request.resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.code == resource.data.code && request.resource.data.matchSize == resource.data.matchSize &&
     request.resource.data.createdAt == resource.data.createdAt && (

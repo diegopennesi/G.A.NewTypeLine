@@ -6,12 +6,12 @@ Web app multiplayer per la Timeline di Gundam Assemble, con autenticazione Fireb
 
 Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 18 Unit Card segnaposto. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
 
-I valori delle Unit Card sono provvisori. L’ordine di selezione determina l’ordine delle proprie unità sulla stessa casella. In partita, tocca una tua carta e scegli una destinazione tra TL 1 e TL 10. Ogni casella disponibile mostra lo spostamento in TL. Le posizioni vengono salvate e sincronizzate tra i due giocatori. Attivazioni, spareggio iniziale, combattimento e avanzamento delle fasi non sono ancora implementati. Durante il setup l’uscita libera il posto e azzera le conferme; dopo l’avvio si può tornare alla dashboard senza abbandonare la partita.
+I valori delle Unit Card sono provvisori. L’ordine di selezione determina l’ordine iniziale delle proprie unità sulla stessa casella. In partita l’app evidenzia il prossimo MS. Il suo giocatore avvia l’attivazione, paga il costo TL e conclude l’attivazione al termine delle azioni. I comandi **Distrutto (+2 TL)** e **Spostamento da effetto** permettono di registrare effetti anche su altri MS. Il combattimento, il punteggio e gli inneschi delle carte si risolvono al tavolo.
 
 ### Carte e mazzi
 
 - **Unit Card**. Le carte delle unità schierate sulla Timeline. Ogni giocatore ne sceglie 3 o 5 in base al formato.
-- **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte segnaposto, sia in 3v3 sia in 5v5. In partita, scegli una carta e una casella TL per rivelarla. Il quadratino resta sulla casella e apre il testo della carta. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
+- **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte segnaposto, sia in 3v3 sia in 5v5. In partita, gioca una carta durante un’attivazione. Il quadratino resta sulla TL di origine dell’attivazione e apre il testo della carta. Una Response può essere registrata anche durante l’attivazione avversaria quando si verifica l’innesco. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
 
 ### Riprendere una partita
 

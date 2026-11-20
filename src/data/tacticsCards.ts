@@ -1,6 +1,6 @@
 export const tacticsDeckSize = 9
 
-export const tacticsCards = [
+export const tacticsCards: readonly { id: string; name: string; text: string; response?: boolean }[] = [
   { id: 'tactic-01', name: 'Copertura', text: 'Segna che l’unità cerca riparo durante questa azione.' },
   { id: 'tactic-02', name: 'Ricognizione', text: 'Segna che la squadra osserva la zona prima di avanzare.' },
   { id: 'tactic-03', name: 'Spostamento laterale', text: 'Segna una manovra sul fianco.' },
@@ -11,6 +11,6 @@ export const tacticsCards = [
   { id: 'tactic-08', name: 'Retromarcia', text: 'Segna una manovra di ripiegamento.' },
   { id: 'tactic-09', name: 'Avanzata', text: 'Segna una manovra di avanzamento.' },
   { id: 'tactic-10', name: 'Presidio', text: 'Segna un punto che la squadra intende presidiare.' },
-  { id: 'tactic-11', name: 'Cambio di rotta', text: 'Segna un cambio di direzione della squadra.' },
-  { id: 'tactic-12', name: 'Segnale', text: 'Segna una comunicazione tra unità alleate.' },
+  { id: 'tactic-11', response: true, name: 'Cambio di rotta', text: 'Segna un cambio di direzione della squadra.' },
+  { id: 'tactic-12', response: true, name: 'Segnale', text: 'Segna una comunicazione tra unità alleate.' },
 ] as const
