@@ -121,3 +121,28 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
   .match-header .player-list { min-width: 0; }
   .match-header .player-list span { overflow-wrap: anywhere; }
 }
+
+.timeline-layout-switch { display: flex; width: fit-content; gap: .25rem; margin-bottom: .65rem; padding: .2rem; border: 1px solid #53617f; border-radius: .5rem; }
+.timeline-layout-switch button { min-height: 44px; padding: 0 .65rem; border: 1px solid transparent; border-radius: .3rem; background: transparent; color: #edf1ff; }
+.timeline-layout-switch button[aria-pressed="true"] { background: #293653; border-color: #8193b5; }
+.timeline-grid + .timeline-grid { margin-top: .4rem; }
+.timeline-wheel-view { display: grid; gap: .7rem; }
+.timeline-wheel { position: relative; isolation: isolate; width: min(100%, 23rem); aspect-ratio: 1; margin-inline: auto; overflow: hidden; border: 1px solid #53617f; border-radius: 50%; background: repeating-conic-gradient(from -18deg, #53617f 0deg 1deg, #111929 1deg 36deg); }
+.timeline-wheel-sector { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; color: #f4f6ff; }
+.timeline-wheel-sector[aria-pressed="true"] { background: #3a4f76b8; }
+.timeline-wheel-sector:hover, .timeline-wheel-sector[data-drop-target] { background: #536b96c7; }
+.timeline-wheel-label { position: absolute; top: var(--sector-y); left: var(--sector-x); display: grid; justify-items: center; gap: .15rem; min-width: 34px; padding: .15rem; transform: translate(-50%, -50%); border-radius: .3rem; font-weight: 700; }
+.timeline-wheel-sector[aria-current="step"] .timeline-wheel-label, .timeline-wheel-sector:focus-visible .timeline-wheel-label { outline: 2px solid #ffce7e; }
+.timeline-wheel-label small { display: flex; justify-content: center; gap: .15rem; min-height: .45rem; }
+.timeline-wheel-label i { width: .45rem; height: .45rem; border-radius: 50%; }
+.timeline-wheel-label .timeline-wheel-marker { border-radius: .1rem; background: #ffce7e; }
+.timeline-wheel-details { min-height: 0; }
+.timeline-wheel-details p { margin: .35rem; color: #c9d1e5; }
+@media (max-width: 620px) and (orientation: portrait) {
+  .timeline-grid { grid-template-columns: var(--timeline-mobile-columns); gap: .2rem; }
+  .timeline-slot { min-width: 0; padding: .16rem; }
+  .timeline-slot > * { min-width: 0; }
+  .timeline-slot .timeline-unit { padding-inline: .12rem; overflow-wrap: anywhere; }
+  .timeline-slot .timeline-destination { padding-inline: 0; }
+  .timeline-slot .tactics-marker { width: 100%; }
+}
