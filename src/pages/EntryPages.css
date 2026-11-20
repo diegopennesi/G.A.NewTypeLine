@@ -1,19 +1,13 @@
 .entry-surface {
-  --entry-ink: #eefaff;
-  --entry-muted: #b8cbd6;
-  --entry-accent: #a5efdc;
-  --entry-line: #486376;
-  --entry-glass: rgba(25, 43, 61, .82);
+  --entry-ink: var(--hangar-text);
+  --entry-muted: var(--hangar-muted);
+  --entry-accent: var(--hangar-accent);
+  --entry-line: var(--hangar-control-border);
+  --entry-glass: var(--hangar-glass);
   color: var(--entry-ink);
 }
 
-.auth-page.entry-surface {
-  min-height: 100dvh;
-  background:
-    radial-gradient(ellipse at 14% 35%, #22465c 0, transparent 44%),
-    radial-gradient(ellipse at 85% 66%, #244b48 0, transparent 39%),
-    #101927;
-}
+
 
 .auth-layout {
   display: grid;
@@ -65,10 +59,10 @@
 .auth-google { width: 100%; }
 .auth-card .auth-switch { margin-bottom: 0; color: var(--entry-muted); }
 .auth-switch .text-button { min-height: 44px; color: var(--entry-accent); }
-.entry-surface .field input { min-height: 46px; border-color: #638094; background: #112132; }
+.entry-surface .field input { min-height: 46px; border-color: var(--hangar-control-border); background: var(--hangar-deck); }
 .entry-surface .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; text-decoration: none; }
-.entry-surface .button:not(.secondary) { border-color: transparent; background: var(--entry-accent); color: #102620; }
-.entry-surface .button.secondary { border-color: #638094; background: #152936a8; color: var(--entry-ink); }
+.entry-surface .button:not(.secondary) { border-color: transparent; background: var(--entry-accent); color: var(--hangar-ink); }
+.entry-surface .button.secondary { border-color: var(--hangar-control-border); background: #29262baa; color: var(--entry-ink); }
 .entry-surface .button:not(:disabled):hover { border-color: var(--entry-accent); }
 .entry-surface :focus-visible { outline: 2px solid var(--entry-accent); outline-offset: 3px; }
 
@@ -94,7 +88,7 @@
   --entry-accent: #f7c889;
   --entry-line: #65615d;
   --entry-muted: #c6c2bd;
-  --entry-glass: rgba(34, 36, 43, .88);
+  --entry-glass: var(--hangar-glass);
   --entry-ink: #fff8ed;
   background: radial-gradient(ellipse at 24% 24%, #383338 0, transparent 48%), #121418;
 }
