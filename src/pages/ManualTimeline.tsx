@@ -116,13 +116,12 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
             </div>}
             {state.units.filter(unit => unit.time === time).map(unit => {
               const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
-              const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
               return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
                 ? <button className={className} type="button" key={unit.key} disabled={saving}
                     onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
-                    {text}<small>Attiva</small>
+                    {label(unit.id)}<small>Attiva</small>
                   </button>
-                : <span className={className} key={unit.key}>{text}</span>
+                : <span className={className} key={unit.key}>{label(unit.id)}</span>
             })}
           </li>
         })}
@@ -146,7 +145,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
       </select></label>
       {target && <>
         <button className="button secondary" type="button" disabled={saving || target.reserve}
-          onClick={() => update({ kind: 'defeat', key: target.key }, 'MS in Riserva · +2 TL.')}>Distrutto (+2 TL)</button>
+          onClick={() => update({ kind: 'defeat', key: target.key }, 'MS distrutto · +2 TL.')}>Distrutto (+2 TL)</button>
         <form onSubmit={event => { event.preventDefault(); update({ kind: 'effect', key: target.key, delta: effectAmount }, 'Spostamento da effetto applicato.') }}>
           <label>Spostamento in TL <input type="number" min={-20} max={20} required value={effectDelta} onChange={event => setEffectDelta(event.target.value)} /></label>
           <button className="button secondary" type="submit" disabled={saving || !canApplyEffect}>Applica effetto</button>
