@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { unitCards } from '../data/unitCards'
 import { tacticsCards } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
@@ -13,6 +13,8 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [delta, setDelta] = useState('')
+  const drag = useRef<{ x: number; y: number; id: number } | null>(null)
+  const [dropTarget, setDropTarget] = useState<number | null>(null)
   const [effectDelta, setEffectDelta] = useState('')
   const [targetKey, setTargetKey] = useState('')
   const [selectedTactic, setSelectedTactic] = useState<string | null>(null)
@@ -79,6 +81,46 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
     void run(() => changeActivation(game.code, playerId, state.version, action), message)
   }
 
+  const canPay = ownTurn && !!current && !current.paid && !saving
+  const costTo = (time: number) => time - (activeUnit?.time ?? time)
+  const canLand = (time: number) => canPay && costTo(time) >= 1 && costTo(time) <= 20
+
+  function payTo(time: number) {
+    if (canLand(time)) update({ kind: 'pay', delta: costTo(time) }, 'Costo TL applicato.')
+  }
+
+  function dropTime(event: PointerEvent<HTMLElement>) {
+    return Number(document.elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-timeline-time]')?.dataset.timelineTime)
+  }
+
+  function startDrag(event: PointerEvent<HTMLElement>) {
+    if (!event.isPrimary || event.button !== 0) return
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function moveDrag(event: PointerEvent<HTMLElement>) {
+    const start = drag.current
+    if (start?.id !== event.pointerId || Math.hypot(event.clientX - start.x, event.clientY - start.y) < 6) return
+    const scroll = event.currentTarget.closest('.timeline-scroll')
+    if (scroll) {
+      const bounds = scroll.getBoundingClientRect()
+      if (event.clientX > bounds.right - 24) scroll.scrollLeft += 16
+      if (event.clientX < bounds.left + 24) scroll.scrollLeft -= 16
+    }
+    const time = dropTime(event)
+    setDropTarget(canLand(time) ? time : null)
+  }
+
+  function finishDrag(event: PointerEvent<HTMLElement>, commit: boolean) {
+    const start = drag.current
+    if (start?.id !== event.pointerId) return
+    drag.current = null
+    setDropTarget(null)
+    if (commit && Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 6) payTo(dropTime(event))
+  }
+
   function rollInitiative() {
     const roll = () => 1 + Math.floor(Math.random() * 10)
     const one = roll()
@@ -106,8 +148,11 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
         {slots.map(slot => {
           const time = (phase - 1) * 10 + slot
           const slotMarkers = markers.filter(marker => marker.phase === phase && marker.slot === slot)
-          return <li className="timeline-slot" key={slot} aria-current={time === round ? 'step' : undefined}>
-            <span className="timeline-slot-number">{slot}</span>
+          return <li className="timeline-slot" key={slot} data-timeline-time={time} data-drop-target={dropTarget === time || undefined} aria-current={time === round ? 'step' : undefined}>
+            {canLand(time)
+              ? <button type="button" className="timeline-destination" aria-label={`Sposta a TL ${slot}, fase ${phase}, +${costTo(time)} TL`}
+                  onClick={() => payTo(time)}><span>{slot}</span><strong>+{costTo(time)} TL</strong></button>
+              : <span className="timeline-slot-number">{slot}</span>}
             {slotMarkers.length > 0 && <div className="tactics-markers">
               {slotMarkers.map(marker => <button key={marker.key} type="button"
                 className={`tactics-marker timeline-unit-${marker.team === 'RED' ? 'red' : 'blue'}`}
@@ -117,6 +162,13 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
             {state.units.filter(unit => unit.time === time).map(unit => {
               const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
               const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
+              if (canPay && unit.key === current?.key) {
+                return <span className={`${className} timeline-drag-unit`} key={unit.key}
+                  onPointerDown={startDrag} onPointerMove={moveDrag}
+                  onPointerUp={event => finishDrag(event, true)}
+                  onPointerCancel={event => finishDrag(event, false)}
+                  onLostPointerCapture={event => finishDrag(event, false)}>{text}</span>
+              }
               return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
                 ? <button className={className} type="button" key={unit.key} disabled={saving}
                     onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
@@ -129,6 +181,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
       </ol>
     </div>
     {ownTurn && current && <div className="timeline-action-controls">
+      {!current.paid && <p>Tocca una TL evidenziata o trascina il MS sulla destinazione. Puoi cambiare fase dalla vista.</p>}
       {current.paid ? <button className="button" type="button" disabled={saving}
         onClick={() => update({ kind: 'end' }, 'Attivazione conclusa.')}>Termina attivazione</button>
         : <form onSubmit={event => { event.preventDefault(); update({ kind: 'pay', delta: Number(delta) }, 'Costo TL applicato.') }}>
