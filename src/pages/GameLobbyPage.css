@@ -146,3 +146,6 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
   .timeline-slot .timeline-destination { padding-inline: 0; }
   .timeline-slot .tactics-marker { width: 100%; }
 }
+
+.deck-randomize { display: flex; align-items: center; gap: .5rem; min-height: 44px; width: fit-content; }
+.deck-randomize input { width: 1.15rem; height: 1.15rem; accent-color: #e4b058; }

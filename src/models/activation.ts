@@ -6,6 +6,7 @@ type Seat = 'one' | 'two'
 export type TimelineUnit = { key: string; id: string; seat: Seat; time: number; reserve: boolean }
 export type Activation = {
   version: number
+  phaseTwoSeats?: Seat[]
   reaction?: ReactionTiming | null
   lastKind?: TimelineAction['kind']
   units: TimelineUnit[]
@@ -36,6 +37,12 @@ export function initialActivation(game: Game): Activation {
     return card ? [{ key: `${seat}/${id}`, id, seat, time: positions?.[id] ?? card.startingTimeline, reserve: true }] : []
   }))
   return { version: 0, units, round: 1, lastSeat: null, current: null }
+}
+
+export function reachedSecondPhase(state: Activation | undefined, seat: Seat) {
+  if (state?.phaseTwoSeats?.includes(seat)) return true
+  const units = state?.units.filter(unit => unit.seat === seat) ?? []
+  return units.length > 0 && units.every(unit => unit.time > 10)
 }
 
 export function nextActivation(state: Activation) {

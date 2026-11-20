@@ -13,6 +13,8 @@ Le Unit Card usano la TL iniziale stampata. Puoi selezionare un’arma per preco
 - **Unit Card**. Le carte delle unità schierate sulla Timeline. Ogni giocatore ne sceglie 3 o 5 in base al formato.
 - **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte dal catalogo ST01, EX01, EX02 e PA01, sia in 3v3 sia in 5v5. In partita, gioca una carta durante un’attivazione. Il quadratino resta sulla TL di origine dell’attivazione e apre il testo della carta. Per una Response, il giocatore attivo apre una finestra indicando il momento. L’altro giocatore può rispondere o passare per riprendere l’attivazione. Le carte Attack propongono il costo TL. Gli inneschi e gli effetti sul tabellone sono confermati al tavolo. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
 
+**Randomizza carte** è una scelta per giocatore, disponibile alla creazione o durante la preparazione del proprio mazzo. In partita rende disponibili le prime 3 carte del mazzo mescolato e altre 3 quando tutti i MS del giocatore sono in Fase 2. Le ultime 3 restano coperte. Le carte già giocate rimangono visibili a entrambi sulla Timeline.
+
 ### Riprendere una partita
 
 Dalla dashboard, **Riprendi partita** mostra le lobby e le partite dell’account, con l’ultima mossa in GMT quando disponibile. Dopo un’ora di inattività la voce scompare dalla dashboard e l’app blocca il rientro. In una partita avviata l’ora parte dall’avvio e riparte a ogni spostamento di una Unit Card, giocata tattica o Revert. In preparazione conta l’ultimo aggiornamento della lobby.
