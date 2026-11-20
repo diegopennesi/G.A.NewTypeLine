@@ -1,3 +1,4 @@
+import './EntryPages.css'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatMatchTime } from '../models/matchActivity'
@@ -26,25 +27,35 @@ export function DashboardPage() {
   const now = useMatchClock(deadlines)
   const visibleMatches = matches?.filter(match => match.expiresAt === null || now < match.expiresAt)
 
-  return <>
-    <p className="eyebrow">Dashboard</p>
-    <h1>Pronto per la prossima partita, {user?.displayName?.split(' ')[0] || 'pilota'}.</h1>
+  return <div className="entry-dashboard entry-surface">
+    <header className="dashboard-heading">
+      <h1>Le tue partite</h1>
+      <p className="lead">Crea una lobby, entra con un codice o riprendi una partita in corso.</p>
+    </header>
     <div className="dashboard-grid">
-      <section className="panel"><h2>Partite multiplayer</h2><p className="lead">Crea una lobby o entra con il codice ricevuto dal tuo avversario.</p><div className="action-row"><Link className="button" to="/lobby/create">Crea partita</Link><Link className="button secondary" to="/lobby/join">Entra con un codice</Link></div></section>
-      <section className="panel" aria-labelledby="rejoin-title">
+      <section className="panel entry-glass dashboard-actions" aria-labelledby="new-match-title">
+        <h2 id="new-match-title">Nuova partita</h2>
+        <div className="action-row">
+          <Link className="button" to="/lobby/create">Crea partita</Link>
+          <Link className="button secondary" to="/lobby/join">Entra con un codice</Link>
+        </div>
+      </section>
+      <section className="panel entry-glass dashboard-resume" aria-labelledby="rejoin-title">
         <h2 id="rejoin-title">Riprendi partita</h2>
         {failedFor === playerId ? <p className="message error" role="alert">Impossibile caricare le tue partite.</p>
-          : !visibleMatches ? <p role="status">Caricamento delle partite…</p>
-          : visibleMatches.length === 0 ? <p className="lead">Non hai partite da riprendere.</p>
+          : !visibleMatches ? <p role="status" className="dashboard-message">Caricamento delle partite…</p>
+          : visibleMatches.length === 0 ? <p className="dashboard-message">Non hai partite da riprendere.</p>
           : <ul className="resume-matches">{visibleMatches.map(match => <li key={match.code}>
-              <div><strong>{match.code} · {match.matchSize}</strong>
+              <div>
+                <strong>{match.code}</strong><span className="match-format">{match.matchSize}</span>
                 <span>{matchLabels[match.status]}{match.opponent && ` · ${match.opponent}`}</span>
-                {match.status === 'ACTIVE' && <span>{match.lastMoveAt === null ? 'Nessuna mossa registrata' : <>Ultima mossa <time dateTime={new Date(match.lastMoveAt).toISOString()}>{formatMatchTime(match.lastMoveAt)}</time></>}</span>}
+                {match.status === 'ACTIVE' && <span>{match.lastMoveAt === null ? 'Nessuna mossa registrata' :
+                  <>Ultima mossa <time dateTime={new Date(match.lastMoveAt).toISOString()}>{formatMatchTime(match.lastMoveAt)}</time></>}</span>}
               </div>
-              <Link className="button secondary" to={`/games/${match.code}`} aria-label={`Riprendi partita ${match.code}`}>Riprendi</Link>
+              <Link className="button secondary" to={`/games/${match.code}`}
+                aria-label={`Riprendi partita ${match.code}`}>Riprendi</Link>
             </li>)}</ul>}
       </section>
-      <aside className="panel"><h2>Roadmap</h2><ol className="milestones"><li><span className="milestone-number">1</span><span>Account e dashboard completati</span></li><li><span className="milestone-number">2</span><span>Lobby e inviti condivisibili</span></li><li><span className="milestone-number">3</span><span>Timeline e sincronizzazione</span></li></ol></aside>
     </div>
-  </>
+  </div>
 }
