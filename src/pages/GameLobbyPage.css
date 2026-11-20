@@ -31,3 +31,15 @@
 button.timeline-unit, .timeline-destination, .timeline-instructions button { cursor: pointer; }
 button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { outline: 2px solid #ffce7e; outline-offset: 1px; }
 .manual-timeline button:disabled { cursor: wait; }
+
+.tactics-save { margin-top: .8rem; }
+.tactics-markers, .tactics-controls { display: flex; flex-wrap: wrap; gap: .3rem; }
+.tactics-marker { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: .35rem; background: transparent; color: #fff; }
+.tactics-marker::before { content: ''; width: 1.2rem; height: 1.2rem; border: 1px solid #ffffff90; border-radius: .15rem; }
+.tactics-marker.timeline-unit-red::before { background: #a23e36; }
+.tactics-marker.timeline-unit-blue::before { background: #2458c4; }
+.tactics-marker[aria-pressed="true"]::before { outline: 2px solid #ffce7e; outline-offset: 2px; }
+.tactics-revealed, .tactics-hand { margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #35415d; }
+.tactics-hand h3 { margin: 0 0 .6rem; font-size: 1rem; }
+.tactics-revealed p, .tactics-hand p { margin: .35rem 0 0; color: #c9d1e5; }
+.tactics-controls .button[aria-pressed="true"] { border-color: #ffce7e; color: #ffce7e; }

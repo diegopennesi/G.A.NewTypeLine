@@ -29,3 +29,5 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GANEWTYPELINE }}
       - run: npx -y firebase-tools@latest deploy --only hosting,firestore:rules --project ganewtypeline --non-interactive
+      - run: npm ci --prefix functions
+      - run: npx -y firebase-tools@latest deploy --only functions:cleanupExpiredGames --project ganewtypeline --non-interactive

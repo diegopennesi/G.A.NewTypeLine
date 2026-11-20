@@ -1,10 +1,12 @@
 rules_version = '2';
 // Sprint 3: lobby, squads of 3 or 5 placeholder units, readiness and initial TL.
 // Code/format/createdAt are immutable. Only the departing owner can transfer ownership.
+// games/{code}/tacticsDecks/{uid}: cards is a list of nine distinct catalog IDs.
+// games/{code}/tacticsPlays/{uid}: order is a list of revealed IDs, slots maps each ID to a TL.
 service cloud.firestore {
  match /databases/{database}/documents {
   function signed() { return request.auth != null; }
-  function participant(d) { return signed() && request.auth.uid in [d.playerOneId, d.playerTwoId]; }
+  function participant(d) { return signed() && (request.auth.uid == d.playerOneId || request.auth.uid == d.playerTwoId); }
   function squad(s, n) {
    return s is list && s.size() <= n && s.toSet().size() == s.size() &&
     s.hasOnly(['placeholder-1','placeholder-2','placeholder-3','placeholder-4','placeholder-5','placeholder-6','placeholder-7','placeholder-8','placeholder-9','placeholder-10','placeholder-11','placeholder-12','placeholder-13','placeholder-14','placeholder-15','placeholder-16','placeholder-17','placeholder-18']);
@@ -13,7 +15,7 @@ service cloud.firestore {
    let before = resource.data.get(field, {});
    let after = request.resource.data.get(field, {});
    let changes = after.diff(before);
-   return request.resource.data.diff(resource.data).affectedKeys().hasOnly([field, 'updatedAt']) &&
+   return request.resource.data.diff(resource.data).affectedKeys().hasOnly([field, 'updatedAt', 'lastActionAt']) &&
     after.keys().hasOnly(squad) &&
     after.values().hasOnly([1,2,3,4,5,6,7,8,9,10]) &&
     changes.affectedKeys().size() == 1 && changes.removedKeys().size() == 0;
@@ -37,33 +39,106 @@ service cloud.firestore {
       d.playerOneTeam in ['RED','BLUE'] && d.playerTwoTeam in ['RED','BLUE'] && d.playerOneTeam != d.playerTwoTeam &&
       (d.status != 'ACTIVE' || (d.playerOneReady && d.playerTwoReady))));
   }
+  function activeWithinDeadline(d) {
+   return d.status == 'ACTIVE' && withinDeadline(d);
+  }
+  function withinDeadline(d) {
+   return request.time < d.get('lastActionAt', d.updatedAt) + duration.value(1, 'h');
+  }
+  function tacticsIds() {
+   return ['tactic-01','tactic-02','tactic-03','tactic-04','tactic-05','tactic-06',
+    'tactic-07','tactic-08','tactic-09','tactic-10','tactic-11','tactic-12'];
+  }
+  function validTacticsDeck(d) {
+   return d.keys().hasOnly(['cards']) && d.cards is list &&
+    d.cards.size() == 9 && d.cards.toSet().size() == 9 && d.cards.hasOnly(tacticsIds());
+  }
+  function validTacticsPlays(d) {
+   return d.keys().hasOnly(['order','slots','changedAt']) && d.changedAt == request.time && d.order is list && d.slots is map &&
+    d.order.size() <= 9 && d.order.toSet().size() == d.order.size() &&
+    d.order.hasOnly(tacticsIds()) && d.slots.keys().toSet() == d.order.toSet() &&
+    d.slots.values().hasOnly([1,2,3,4,5,6,7,8,9,10]);
+  }
+  function appendTacticsPlay(before, after, deck) {
+   let id = after.order[after.order.size() - 1];
+   return id in deck && !(id in before.order) &&
+    after.order == before.order.concat([id]) &&
+    after.slots.diff(before.slots).affectedKeys().hasOnly([id]);
+  }
+  function revertTacticsPlay(before, after) {
+   let id = before.order[before.order.size() - 1];
+   return before.order == after.order.concat([id]) &&
+    after.slots.diff(before.slots).affectedKeys().hasOnly([id]);
+  }
   match /games/{code} {
+   // A deck is readable only by its owner. The separate plays document contains revealed cards.
+   function gamePath() { return /databases/$(database)/documents/games/$(code); }
+   function currentGame() { return get(gamePath()).data; }
+   function recordsTacticsAction() {
+    let uid = request.auth.uid;
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt','lastActionAt']) &&
+     getAfter(/databases/$(database)/documents/games/$(code)/tacticsPlays/$(uid)).data.changedAt == request.time;
+   }
+   function ownDeck(uid) { return get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards; }
+   function ownsActivePlays(uid) {
+    let game = currentGame();
+    return participant(game) && request.auth.uid == uid && activeWithinDeadline(game) &&
+     getAfter(gamePath()).data.lastActionAt == request.time;
+   }
+   function canEditDeck(uid) {
+    let game = currentGame();
+    return participant(game) && request.auth.uid == uid && withinDeadline(game) &&
+     ((game.playerOneId == uid && !game.playerOneReady) ||
+      (game.playerTwoId == uid && !game.playerTwoReady)) &&
+     game.status in ['WAITING','SETUP'];
+   }
+   match /tacticsDecks/{uid} {
+    allow get: if signed() && request.auth.uid == uid && participant(currentGame());
+    allow create, update: if signed() && canEditDeck(uid) && validTacticsDeck(request.resource.data);
+   }
+   match /tacticsPlays/{uid} {
+    allow get: if signed() && participant(currentGame()) && currentGame().status == 'ACTIVE';
+    allow create: if signed() && ownsActivePlays(uid) && validTacticsPlays(request.resource.data) &&
+     request.resource.data.order.size() == 1 &&
+     appendTacticsPlay({'order': [], 'slots': {}}, request.resource.data, ownDeck(uid));
+    allow update: if signed() && ownsActivePlays(uid) && validTacticsPlays(request.resource.data) &&
+     ((request.resource.data.order.size() > resource.data.order.size() &&
+       appendTacticsPlay(resource.data, request.resource.data, ownDeck(uid))) ||
+      (request.resource.data.order.size() < resource.data.order.size() &&
+       revertTacticsPlay(resource.data, request.resource.data)));
+   }
    allow get: if signed() && (resource.data.status == 'WAITING' || participant(resource.data));
    allow list: if participant(resource.data);
    allow create: if signed() && valid(request.resource.data) && request.resource.data.code == code &&
     request.resource.data.ownerId == request.auth.uid && request.resource.data.status == 'WAITING' &&
     request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
-   allow update: if signed() && resource.data.status == 'ACTIVE' && request.resource.data.updatedAt == request.time && (
+   allow update: if signed() && activeWithinDeadline(resource.data) && request.resource.data.updatedAt == request.time &&
+    request.resource.data.lastActionAt == request.time && (
+    (participant(resource.data) && recordsTacticsAction()) ||
     (request.auth.uid == resource.data.playerOneId && manualMove('playerOneTimeline', resource.data.playerOneSquad)) ||
     (request.auth.uid == resource.data.playerTwoId && manualMove('playerTwoTimeline', resource.data.playerTwoSquad)));
    allow update: if signed() && valid(request.resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.code == resource.data.code && request.resource.data.matchSize == resource.data.matchSize &&
     request.resource.data.createdAt == resource.data.createdAt && (
-     (resource.data.status == 'WAITING' && request.resource.data.status == 'SETUP' &&
+     (resource.data.status == 'WAITING' && withinDeadline(resource.data) && request.resource.data.status == 'SETUP' &&
       request.resource.data.playerTwoId == request.auth.uid &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoId','playerTwoName','playerOneTeam','playerTwoTeam','updatedAt','status'])) ||
-     (resource.data.status == 'SETUP' && request.auth.uid == resource.data.playerOneId &&
+     (resource.data.status == 'SETUP' && withinDeadline(resource.data) && request.auth.uid == resource.data.playerOneId &&
       (!resource.data.playerOneReady || request.resource.data.playerOneSquad == resource.data.playerOneSquad) && request.resource.data.playerOneReady &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerOneReady','playerOneSquad','status','updatedAt'])) ||
-     (resource.data.status == 'SETUP' && request.auth.uid == resource.data.playerTwoId &&
+     (resource.data.status == 'SETUP' && withinDeadline(resource.data) && request.auth.uid == resource.data.playerTwoId &&
       (!resource.data.playerTwoReady || request.resource.data.playerTwoSquad == resource.data.playerTwoSquad) && request.resource.data.playerTwoReady &&
       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerTwoReady','playerTwoSquad','status','updatedAt'])) ||
-     (participant(resource.data) && resource.data.status == 'SETUP' && request.resource.data.status == 'WAITING' &&
+     (participant(resource.data) && resource.data.status == 'SETUP' && withinDeadline(resource.data) && request.resource.data.status == 'WAITING' &&
       request.resource.data.playerOneId == (request.auth.uid == resource.data.playerOneId ? resource.data.playerTwoId : resource.data.playerOneId) &&
       request.resource.data.playerOneName == (request.auth.uid == resource.data.playerOneId ? resource.data.playerTwoName : resource.data.playerOneName) &&
       request.resource.data.playerOneSquad.size() == 0 && request.resource.data.playerTwoSquad.size() == 0)
     );
-   allow delete: if signed() && resource.data.ownerId == request.auth.uid && resource.data.status == 'WAITING';
+   // Keep the parent until scheduled cleanup can remove its private decks.
+   allow update: if signed() && resource.data.ownerId == request.auth.uid &&
+    resource.data.status == 'WAITING' && request.resource.data.status == 'FINISHED' &&
+    request.resource.data.updatedAt == request.time &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']);
   }
  }
 }

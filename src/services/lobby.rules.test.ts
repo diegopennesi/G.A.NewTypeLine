@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 
-import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby } from './lobbyService'
+import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
+import { playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
 
@@ -92,7 +93,7 @@ describe('ciclo completo tramite i servizi applicativi', () => {
       await assertFails(getDoc(doc(asUser('outsider'), 'games', code)))
     })
   }
-  it('trasferisce la proprietà e cancella la lobby quando esce l’ultimo giocatore', async () => {
+  it('trasferisce la proprietà e chiude la lobby quando esce l’ultimo giocatore', async () => {
     asUser('pc')
     const code = await createLobby('pc', 'PC', '3v3')
     asUser('phone')
@@ -106,7 +107,7 @@ describe('ciclo completo tramite i servizi applicativi', () => {
     expect(saved.playerTwoId).toBeNull()
     await leaveLobby(code, 'phone')
     await environment.withSecurityRulesDisabled(async context => {
-      expect((await getDoc(doc(context.firestore(), 'games', code))).exists()).toBe(false)
+      expect((await getDoc(doc(context.firestore(), 'games', code))).data()?.status).toBe('FINISHED')
     })
   })
   it('rifiuta conferme di estranei, modifiche alla squadra confermata e cambi formato', async () => {
@@ -178,11 +179,109 @@ it('saves manual moves independently for both players and rejects invalid edits'
   vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
   await expect(moveTimelineUnit(code, 'pc', 'placeholder-1', 1, 2)).rejects.toThrow('già stata spostata')
   await expect(moveTimelineUnit(code, 'pc', 'placeholder-1', 10, 11)).rejects.toThrow('TL 10')
-  await assertFails(updateDoc(ref, { playerTwoTimeline: { 'placeholder-1': 7 }, updatedAt: serverTimestamp() }))
-  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 11 }, updatedAt: serverTimestamp() }))
-  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 10, 'placeholder-4': 7 }, updatedAt: serverTimestamp() }))
-  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9, 'placeholder-2': 8 }, updatedAt: serverTimestamp() }))
-  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9 }, status: 'WAITING', updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerTwoTimeline: { 'placeholder-1': 7 }, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 11 }, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 10, 'placeholder-4': 7 }, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9, 'placeholder-2': 8 }, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { playerOneTimeline: { 'placeholder-1': 9 }, status: 'WAITING', updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
   await moveTimelineUnit(code, 'pc', 'placeholder-1', 10, 1)
   expect((await getDoc(ref)).data()?.playerOneTimeline).toEqual({ 'placeholder-1': 1 })
+})
+
+it('keeps decks private and lets each player reveal and revert only their own tactics', async () => {
+  const code = 'TACTIC23'
+  const path = `games/${code}`
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  const outsider = environment.authenticatedContext('outsider').firestore()
+  const cards = Array.from({ length: 9 }, (_, i) => `tactic-0${i + 1}`)
+  await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), path), { ...game, code }))
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  await saveTacticsDeck(code, 'pc', cards)
+  await assertSucceeds(getDoc(doc(pc, path, 'tacticsDecks', 'pc')))
+  await assertFails(getDoc(doc(phone, path, 'tacticsDecks', 'pc')))
+  await assertFails(setDoc(doc(phone, path, 'tacticsDecks', 'pc'), { cards }))
+  await assertFails(setDoc(doc(pc, path, 'tacticsDecks', 'pc'), { cards: Array(9).fill(cards[0]) }))
+  await assertFails(playTacticsCard(code, 'pc', cards[0], 3))
+
+  const squad = ['placeholder-1', 'placeholder-2', 'placeholder-3']
+  await environment.withSecurityRulesDisabled(context => updateDoc(doc(context.firestore(), path), {
+    status: 'ACTIVE', playerOneReady: true, playerTwoReady: true, playerOneSquad: squad, playerTwoSquad: squad,
+  }))
+  await assertFails(saveTacticsDeck(code, 'pc', cards))
+  await assertFails(playTacticsCard(code, 'pc', 'tactic-10', 3))
+  await assertFails(playTacticsCard(code, 'pc', cards[0], 11))
+  await playTacticsCard(code, 'pc', cards[0], 3)
+  await playTacticsCard(code, 'pc', cards[1], 3)
+  await moveTimelineUnit(code, 'pc', squad[0], 1, 7)
+
+  const opponentView = doc(phone, path, 'tacticsPlays', 'pc')
+  expect((await getDoc(opponentView)).data()).toMatchObject({
+    order: cards.slice(0, 2), slots: { [cards[0]]: 3, [cards[1]]: 3 },
+  })
+  await assertFails(getDoc(doc(outsider, path, 'tacticsPlays', 'pc')))
+  await assertFails(updateDoc(opponentView, { order: [cards[0]], slots: { [cards[0]]: 3 } }))
+  await assertFails(updateDoc(doc(pc, path, 'tacticsPlays', 'pc'), { slots: { [cards[0]]: 7, [cards[1]]: 3 } }))
+  await expect(revertTacticsCard(code, 'pc', cards[0])).rejects.toThrow('ultima carta')
+  await revertTacticsCard(code, 'pc', cards[1])
+  expect((await getDoc(opponentView)).data()).toMatchObject({ order: [cards[0]], slots: { [cards[0]]: 3 } })
+  await playTacticsCard(code, 'pc', cards[1], 8)
+  const replay = (await getDoc(opponentView)).data()
+  expect(replay?.slots[cards[1]]).toBe(8)
+  expect((await getDoc(doc(pc, path))).data()?.lastActionAt.isEqual(replay?.changedAt)).toBe(true)
+})
+
+it('lists resumable matches for both seats, including inactive browser sessions', async () => {
+  const squad = ['placeholder-1', 'placeholder-2', 'placeholder-3']
+  const active = { ...game, status: 'ACTIVE', playerOneReady: true, playerTwoReady: true, playerOneSquad: squad, playerTwoSquad: squad }
+  await environment.withSecurityRulesDisabled(async context => { await Promise.all([
+    setDoc(doc(context.firestore(), 'games/REJOIN23'), { ...active, code: 'REJOIN23', updatedAt: new Date(0) }),
+    setDoc(doc(context.firestore(), 'games/REJOIN24'), { ...active, code: 'REJOIN24', status: 'FINISHED' }),
+    setDoc(doc(context.firestore(), 'games/REJOIN25'), { ...active, code: 'REJOIN25', ownerId: 'other', playerOneId: 'other', playerTwoId: 'another' }),
+  ]) });
+  for (const [uid, opponent] of [['pc', 'Phone'], ['phone', 'PC']]) {
+    vi.mocked(getFirestoreService).mockReturnValue(environment.authenticatedContext(uid).firestore() as unknown as ReturnType<typeof getFirestoreService>)
+    const matches = await new Promise<ResumableMatch[]>((resolve, reject) => {
+      const stop = watchResumableMatches(uid, matches => { stop(); resolve(matches) }, reject)
+    })
+    expect(matches).toContainEqual({ code: 'REJOIN23', matchSize: '3v3', status: 'ACTIVE', opponent, expiresAt: 3_600_000, lastMoveAt: null })
+    expect(matches.some(match => ['REJOIN24', 'REJOIN25'].includes(match.code))).toBe(false)
+  }
+})
+
+it('expires old lobbies and denies moves that would revive an expired match', async () => {
+  const activeCode = 'EXPIRE23'
+  const lobbyCode = 'EXPIRE24'
+  const liveCode = 'EXPIRE25'
+  const activePath = `games/${activeCode}`
+  const squad = ['placeholder-1', 'placeholder-2', 'placeholder-3']
+  const active = { ...game, status: 'ACTIVE', playerOneReady: true, playerTwoReady: true, playerOneSquad: squad, playerTwoSquad: squad }
+  const old = new Date(Date.now() - 2 * 60 * 60 * 1000)
+  await environment.withSecurityRulesDisabled(async context => {
+    const db = context.firestore()
+    await setDoc(doc(db, activePath), { ...active, code: activeCode, updatedAt: old })
+    await setDoc(doc(db, activePath, 'tacticsDecks', 'pc'), { cards: ['tactic-01'] })
+    await setDoc(doc(db, 'games', liveCode), { ...active, code: liveCode, updatedAt: new Date() })
+  })
+
+  const pc = environment.authenticatedContext('pc').firestore()
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  await expect(joinLobby(activeCode, 'pc', 'PC')).rejects.toThrow('scaduta')
+  await assertFails(moveTimelineUnit(activeCode, 'pc', squad[0], 1, 7))
+  await assertFails(playTacticsCard(activeCode, 'pc', 'tactic-01', 3))
+  await assertFails(updateDoc(doc(pc, 'games', liveCode), { updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await moveTimelineUnit(liveCode, 'pc', squad[0], 1, 8)
+  expect((await getDoc(doc(pc, 'games', liveCode))).data()?.lastActionAt.toMillis()).toBeGreaterThan(old.getTime())
+
+  await environment.withSecurityRulesDisabled(async context => {
+    const lobby = { ...game, code: lobbyCode, status: 'WAITING', playerTwoId: null, playerTwoName: null, playerOneTeam: null, playerTwoTeam: null, updatedAt: old }
+    await setDoc(doc(context.firestore(), 'games', lobbyCode), lobby)
+  })
+  const phone = environment.authenticatedContext('phone').firestore()
+  vi.mocked(getFirestoreService).mockReturnValue(phone as unknown as ReturnType<typeof getFirestoreService>)
+  await expect(joinLobby(lobbyCode, 'phone', 'Phone')).rejects.toThrow('scaduta')
+  await assertFails(updateDoc(doc(phone, 'games', lobbyCode), {
+    playerTwoId: 'phone', playerTwoName: 'Phone', playerOneTeam: 'RED', playerTwoTeam: 'BLUE',
+    status: 'SETUP', updatedAt: serverTimestamp(),
+  }))
 })

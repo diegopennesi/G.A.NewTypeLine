@@ -4,9 +4,26 @@ Web app multiplayer per la Timeline di Gundam Assemble, con autenticazione Fireb
 
 ## Sprint 3: preparazione partita
 
-Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 18 carte placeholder. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
+Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 18 Unit Card segnaposto. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
 
-I valori delle carte sono provvisori. L’ordine di selezione determina l’ordine delle proprie unità sulla stessa casella. In partita, tocca una tua carta e scegli una destinazione tra TL 1 e TL 10. Ogni casella disponibile mostra lo spostamento in TL. Le posizioni vengono salvate e sincronizzate tra i due giocatori. Attivazioni, spareggio iniziale, combattimento e avanzamento delle fasi non sono ancora implementati. Durante il setup l’uscita libera il posto e azzera le conferme; dopo l’avvio si può tornare alla dashboard senza abbandonare la partita.
+I valori delle Unit Card sono provvisori. L’ordine di selezione determina l’ordine delle proprie unità sulla stessa casella. In partita, tocca una tua carta e scegli una destinazione tra TL 1 e TL 10. Ogni casella disponibile mostra lo spostamento in TL. Le posizioni vengono salvate e sincronizzate tra i due giocatori. Attivazioni, spareggio iniziale, combattimento e avanzamento delle fasi non sono ancora implementati. Durante il setup l’uscita libera il posto e azzera le conferme; dopo l’avvio si può tornare alla dashboard senza abbandonare la partita.
+
+### Carte e mazzi
+
+- **Unit Card**. Le carte delle unità schierate sulla Timeline. Ogni giocatore ne sceglie 3 o 5 in base al formato.
+- **Tactics Card**. Le carte del mazzo tattico. In lobby ogni giocatore sceglie e salva privatamente 9 carte segnaposto, sia in 3v3 sia in 5v5. In partita, scegli una carta e una casella TL per rivelarla. Il quadratino resta sulla casella e apre il testo della carta. **Revert** rimuove il tuo ultimo quadratino e rende nuovamente disponibile la relativa carta.
+
+### Riprendere una partita
+
+Dalla dashboard, **Riprendi partita** mostra le lobby e le partite dell’account, con l’ultima mossa in GMT quando disponibile. Dopo un’ora di inattività la voce rimane visibile come **Scaduta** e l’app blocca il rientro. In una partita avviata l’ora parte dall’avvio e riparte a ogni spostamento di una Unit Card, giocata tattica o Revert. In preparazione conta l’ultimo aggiornamento della lobby.
+
+Firestore salva `lastActionAt` usando l’orologio del server. Per le partite precedenti usa `updatedAt` come riferimento. Lo stato salvato rimane disponibile per consultare l’esito della scadenza, che viene calcolato al momento dell’accesso. Le regole bloccano nuove azioni dopo la scadenza. Lo storico completo delle mosse è ancora da implementare.
+
+### Pulizia settimanale
+
+La Cloud Function `cleanupExpiredGames` gira ogni lunedì alle 09:00 GMT. Elimina le partite e le sottocollezioni con ultima attività pari o precedente all’orario pianificato meno 8 giorni. Per una partita senza mosse conta l’ultimo aggiornamento della lobby. Ad esempio, lunedì 14 alle 09:00 la soglia è domenica 6 alle 09:00 GMT, inclusa.
+
+Il workflow di deploy pubblica prima le regole Firestore e poi la funzione. Il progetto deve avere il piano Blaze e l’identità di deploy deve poter creare Cloud Functions di seconda generazione e job Cloud Scheduler.
 
 ### Test locali delle regole e dei servizi
 
