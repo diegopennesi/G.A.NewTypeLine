@@ -43,3 +43,19 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .tactics-hand h3 { margin: 0 0 .6rem; font-size: 1rem; }
 .tactics-revealed p, .tactics-hand p { margin: .35rem 0 0; color: #c9d1e5; }
 .tactics-controls .button[aria-pressed="true"] { border-color: #ffce7e; color: #ffce7e; }
+
+.tactics-controls .revert-button {
+  border-color: #e2e8f4;
+  background: #e2e8f4;
+  color: #1b2437;
+}
+.tactics-controls .revert-button:not(:disabled):hover {
+  border-color: #fff;
+  background: #fff;
+}
+.tactics-controls .revert-button:disabled {
+  border-color: #aebbd2;
+  background: #aebbd2;
+  color: #303c52;
+  opacity: .8;
+}

@@ -125,7 +125,7 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
           onClick={() => { setSelectedId(null); setError(null); setNotice(''); setSelectedTactic(selectedTactic === card.id ? null : card.id) }}>
           {card.name}
         </button>)}
-        <button type="button" className="button secondary" disabled={saving || !lastPlay}
+        <button type="button" className="button revert-button" disabled={saving || !lastPlay}
           aria-label="Revert, annulla l’ultima Tactics Card giocata"
           onClick={() => lastPlay && void updateTactics(() => revertTacticsCard(game.code, playerId, lastPlay), 'Ultima Tactics Card rimessa nel mazzo.')}>
           Revert
