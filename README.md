@@ -4,9 +4,9 @@ Web app multiplayer per la Timeline di Gundam Assemble, con autenticazione Fireb
 
 ## Sprint 3: preparazione partita
 
-Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 6 Unit Card dello Starter Set e 12 segnaposto. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
+Scegli 3v3 o 5v5 alla creazione, invita il secondo giocatore tramite codice o QR e componi una squadra scegliendo tra 15 Unit Card dei set ST01, EX01, EX02 e PA01. I colori sono casuali; non determinano l’iniziativa. Ogni giocatore conferma la propria squadra; quando entrambi sono pronti viene mostrata la Timeline iniziale di 10 caselle. Le conferme sono persistenti e sincronizzate. Le selezioni non ancora confermate sono bozze locali.
 
-Le sei Unit Card ST01 usano la TL iniziale stampata. Puoi selezionare un’arma per precompilare il costo TL dell’azione. Le altre unità usano valori provvisori. L’ordine di selezione determina l’ordine iniziale delle proprie unità sulla stessa casella. In partita l’app evidenzia il prossimo MS. Il suo giocatore avvia l’attivazione, paga il costo TL e conclude l’attivazione al termine delle azioni. I comandi **Distrutto (+2 TL)** e **Spostamento da effetto** permettono di registrare effetti anche su altri MS. Il combattimento, il punteggio e gli inneschi delle carte si risolvono al tavolo.
+Le Unit Card usano la TL iniziale stampata. Puoi selezionare un’arma per precompilare il costo TL dell’azione. L’ordine di selezione determina l’ordine iniziale delle proprie unità sulla stessa casella. In partita l’app evidenzia il prossimo MS. Il suo giocatore avvia l’attivazione, paga il costo TL e conclude l’attivazione al termine delle azioni. I comandi **Distrutto (+2 TL)** e **Spostamento da effetto** permettono di registrare effetti anche su altri MS. Il combattimento, il punteggio e gli inneschi delle carte si risolvono al tavolo.
 
 ### Carte e mazzi
 

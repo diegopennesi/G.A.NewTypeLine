@@ -22,7 +22,7 @@ describe('Sprint 3: setup e regole', () => {
     it(`persists simultaneous confirmations and starts ${size}v${size}`, async () => {
       const code = size === 3 ? 'READY333' : 'READY555'
       await environment.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), `games/${code}`), { ...game, code, matchSize: `${size}v${size}` }))
-      const squad = size === 3 ? ['ST01-U001', 'ST01-U006', 'placeholder-7']
+      const squad = size === 3 ? ['ST01-U001', 'EX01-U02', 'PA01-U03']
         : Array.from({ length: size }, (_, i) => `placeholder-${i + 1}`)
       await Promise.all(['pc', 'phone'].map((uid, index) => {
         const db = environment.authenticatedContext(uid).firestore()

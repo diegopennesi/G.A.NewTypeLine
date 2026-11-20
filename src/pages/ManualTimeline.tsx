@@ -42,7 +42,10 @@ export function ManualTimeline({ game, playerId, deck }: { game: Game; playerId:
   const round = current?.time ?? next.time
   const phase = viewPhase ?? (completed ? 2 : roundPhase(round))
   const team = (side: 'one' | 'two') => side === 'one' ? game.playerOneTeam : game.playerTwoTeam
-  const label = (id?: string) => findUnitCard(id)?.name ?? 'MS'
+  const label = (id?: string) => {
+    const card = findUnitCard(id)
+    return card?.name === 'Gundam' ? `Gundam · ${card.id}` : card?.name ?? 'MS'
+  }
   const target = state.units.find(unit => unit.key === targetKey)
   const ownPlays = playsByPlayer[playerId]
   const lastPlay = ownPlays?.order.at(-1)

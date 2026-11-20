@@ -58,6 +58,72 @@ const starterCards: UnitCard[] = [
   },
 ]
 
+const expansionCards: UnitCard[] = [
+  {
+    id: 'EX01-U01', name: 'Unicorn Gundam (Destroy Mode)', faction: 'Earth Federation / Londo Bell', startingTimeline: 3,
+    stats: { hp: 14, vp: 10, weapons: [
+      { name: 'Beam Saber', timelineCost: 2, range: 1, strength: 4 },
+      { name: 'Beam Magnum', timelineCost: 4, range: 4, strength: 8 },
+    ] },
+  },
+  {
+    id: 'EX01-U02', name: 'Torohachi', faction: 'Earth Federation', startingTimeline: 1,
+    stats: { hp: 8, vp: 5, weapons: [
+      { name: 'Armored Frame', timelineCost: 2, range: 1, strength: 3 },
+    ] },
+  },
+  {
+    id: 'EX01-U03', name: 'Delta Plus', faction: 'Earth Federation / Londo Bell', startingTimeline: 2,
+    stats: { hp: 11, vp: 7, weapons: [
+      { name: 'Twin-Barreled Grenade Launcher', timelineCost: 2, range: 3, strength: 3 },
+      { name: 'Beam Rifle', timelineCost: 4, range: 5, strength: 6 },
+    ] },
+  },
+  {
+    id: 'EX02-U01', name: 'Gundam Aerial', faction: 'Asticassia', startingTimeline: 1,
+    stats: { hp: 16, vp: 10, weapons: [
+      { name: 'Beam Sabers', timelineCost: 2, range: 1, strength: 3 },
+      { name: 'Beam Rifle', timelineCost: 4, range: 4, strength: 6 },
+    ] },
+  },
+  {
+    id: 'EX02-U02', name: 'Gundam Pharact', faction: 'Asticassia', startingTimeline: 2,
+    stats: { hp: 12, vp: 7, weapons: [
+      { name: 'Beak Foot', timelineCost: 2, range: 3, strength: 3 },
+      { name: 'Beam Arquebus', timelineCost: 4, range: 5, strength: 6 },
+    ] },
+  },
+  {
+    id: 'EX02-U03', name: 'Darilbalde', faction: 'Asticassia', startingTimeline: 3,
+    stats: { hp: 13, vp: 8, weapons: [
+      { name: 'Shackle Claw', timelineCost: 2, range: 2, strength: 4 },
+      { name: 'Beam Saber', timelineCost: 3, range: 1, strength: 7 },
+    ] },
+  },
+  {
+    id: 'PA01-U01', name: 'Gundam', faction: 'Earth Federation', startingTimeline: 1,
+    stats: { hp: 17, vp: 10, weapons: [
+      { name: 'Beam Saber', timelineCost: 2, range: 1, strength: 3 },
+      { name: 'Beam Rifle', timelineCost: 3, range: 3, strength: 5 },
+    ] },
+  },
+  {
+    id: 'PA01-U02', name: 'Guncannon', faction: 'Earth Federation', startingTimeline: 2,
+    stats: { hp: 12, vp: 7, weapons: [
+      { name: '240mm Low-Recoil Cannon', timelineCost: 2, range: 'SP', strength: 3 },
+      { name: 'Beam Rifle', timelineCost: 4, range: 4, strength: 7 },
+    ] },
+  },
+  {
+    id: 'PA01-U03', name: 'Guntank', faction: 'Earth Federation', startingTimeline: 2,
+    stats: { hp: 13, vp: 7, weapons: [
+      { name: '120mm Low-Recoil Cannons', timelineCost: 2, range: 4, strength: 2 },
+      { name: 'Quadruple Bop Missile', timelineCost: 3, range: 'SP', strength: 5 },
+    ] },
+  },
+]
+
+// Historical test matches can still contain these IDs.
 const factions = ['Federation', 'Zeon', 'Independent']
 const placeholders: UnitCard[] = Array.from({ length: 18 }, (_, index) => ({
   id: `placeholder-${index + 1}`,
@@ -66,8 +132,8 @@ const placeholders: UnitCard[] = Array.from({ length: 18 }, (_, index) => ({
   startingTimeline: (index % 5) + 1,
 }))
 
-export const unitCards = [...starterCards, ...placeholders.slice(6)]
+export const unitCards = [...starterCards, ...expansionCards]
 
 export function findUnitCard(id: string | undefined) {
-  return starterCards.find(card => card.id === id) ?? placeholders.find(card => card.id === id)
+  return unitCards.find(card => card.id === id) ?? placeholders.find(card => card.id === id)
 }
