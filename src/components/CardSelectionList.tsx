@@ -1,3 +1,4 @@
+import { CardArtwork } from './CardArtwork'
 import { useId, useState } from 'react'
 
 type CardRow = {
@@ -44,6 +45,7 @@ export function CardSelectionList({ label, rows, selected, limit, disabled, onTo
         return <li key={row.id}>
           <button type="button" className="card-selection-row" aria-pressed={chosen}
             disabled={disabled || (!chosen && selected.length >= limit)} onClick={() => onToggle(row.id)}>
+            <CardArtwork cardId={row.id} />
             <span className="card-selection-text">
               <strong>{row.name}</strong>
               <span>{row.summary}</span>
