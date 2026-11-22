@@ -27,3 +27,9 @@
 .avatar-symbol, .account-mystery { display: grid; place-items: center; background: var(--hangar-deck); border: 1px solid var(--hangar-control-border); font-weight: 700; }
 .avatar-symbol { font-size: 2rem; }
 .account-mystery { width: 1.45rem; height: 1.45rem; border-radius: 50%; }
+
+.account-match-history h3 { margin: .65rem 0 0; }
+.account-history-row { width: 100%; padding: .55rem .65rem; border: 1px solid var(--hangar-border); border-radius: .4rem; overflow-wrap: anywhere; }
+.account-history-row summary { cursor: pointer; }
+.account-history-row p { margin: .35rem 0; }
+.account-history-row small { color: var(--hangar-muted); }

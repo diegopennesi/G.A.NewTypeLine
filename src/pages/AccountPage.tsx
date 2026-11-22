@@ -1,3 +1,4 @@
+import { AccountMatchHistory } from './AccountMatchHistory'
 import { avatars, type AvatarId } from '../data/avatars'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -129,5 +130,6 @@ export function AccountPage() {
         <button className="button secondary" type="button" disabled={busy} onClick={() => setDraft(null)}>Annulla</button>
       </div>
     </form>}
+    {uid && <AccountMatchHistory key={uid} uid={uid} presets={presets} />}
   </section>
 }

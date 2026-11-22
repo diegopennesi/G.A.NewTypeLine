@@ -1,3 +1,4 @@
+import { loadMatchHistory } from './matchHistoryService'
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
@@ -418,6 +419,11 @@ it('lets a participant finish a completed match and prevents early closure', asy
   expect(saved?.status).toBe('FINISHED')
   expect(saved?.finishedAt.isEqual(saved.updatedAt)).toBe(true)
   expect(saved?.result).toBe('RED')
+  const archive = doc(db, 'matchResults', code)
+  expect((await getDoc(archive)).data()?.result).toBe('RED')
+  await assertFails(updateDoc(archive, { result: 'BLUE' }))
+  const history = await loadMatchHistory('pc')
+  expect(history.filter(match => match.code === code)).toMatchObject([{ code, outcome: 'win' }])
 })
 
 it('keeps random draws private, unlocks three more at the second phase and keeps the last three covered', async () => {
@@ -497,6 +503,10 @@ it('protects personal avatars and presets and can apply a saved squad and deck t
   vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
   await saveTacticsDeck(code, 'pc', savedDeck)
   await setReady(code, 'pc', true, savedSquad)
+  const snapshot = doc(pc, 'accounts', 'pc', 'matchDecks', code)
+  expect((await getDoc(snapshot)).data()?.cards).toEqual(cards)
+  await assertFails(getDoc(doc(phone, 'accounts', 'pc', 'matchDecks', code)))
+  await assertFails(updateDoc(snapshot, { cards: [...cards].reverse() }))
   await removePreset('pc', 'test-deck')
   expect((await getDoc(doc(pc, 'games', code))).data()?.playerOneSquad).toEqual(units)
   expect((await getDoc(doc(pc, 'games', code, 'tacticsDecks', 'pc'))).data()?.cards).toEqual(cards)

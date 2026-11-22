@@ -88,11 +88,41 @@ service cloud.firestore {
     'veteran-male', 'veteran-female', 'robot-male', 'robot-female', 'mystery'
    ];
   }
+  function matchDocument(code) {
+   return /databases/$(database)/documents/games/$(code);
+  }
+  function archivedResult(game) {
+   return {'playerOneId': game.playerOneId, 'playerTwoId': game.playerTwoId,
+    'playerOneName': game.playerOneName, 'playerTwoName': game.playerTwoName,
+    'playerOneTeam': game.playerOneTeam, 'playerTwoTeam': game.playerTwoTeam,
+    'matchSize': game.matchSize, 'result': game.result, 'finishedAt': game.finishedAt};
+  }
+  match /matchResults/{code} {
+   allow read: if participant(resource.data);
+   allow create: if signed() && participant(get(matchDocument(code)).data) &&
+    get(matchDocument(code)).data.status == 'ACTIVE' &&
+    getAfter(matchDocument(code)).data.status == 'FINISHED' &&
+    getAfter(matchDocument(code)).data.finishedAt == request.time &&
+    request.resource.data == archivedResult(getAfter(matchDocument(code)).data);
+  }
   match /accounts/{uid} {
    function ownsAccount() { return signed() && request.auth.uid == uid; }
    allow get: if ownsAccount();
    allow create, update: if ownsAccount() &&
     request.resource.data.keys().hasOnly(['avatar']) && validAvatar(request.resource.data.avatar);
+   match /matchDecks/{code} {
+    function confirmsOwnSquad() {
+     let before = get(matchDocument(code)).data;
+     let after = getAfter(matchDocument(code)).data;
+     return before.status == 'SETUP' && after.status == 'SETUP' &&
+      ((before.playerOneId == uid && !before.playerOneReady && after.playerOneReady) ||
+       (before.playerTwoId == uid && !before.playerTwoReady && after.playerTwoReady));
+    }
+    allow read: if ownsAccount();
+    allow create, update: if ownsAccount() && confirmsOwnSquad() &&
+     validTacticsDeck(request.resource.data) &&
+     request.resource.data == {'cards': get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards};
+   }
    match /presets/{presetId} {
     allow read, delete: if ownsAccount();
     allow create, update: if ownsAccount() && validPreset(request.resource.data);
@@ -384,6 +414,7 @@ service cloud.firestore {
     request.resource.data.status == 'FINISHED' && phasesComplete(resource.data) &&
     request.resource.data.updatedAt == request.time && request.resource.data.finishedAt == request.time &&
     request.resource.data.result in ['RED', 'BLUE', 'DRAW', 'INTERRUPTED'] &&
+    getAfter(/databases/$(database)/documents/matchResults/$(code)).data == archivedResult(request.resource.data) &&
     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','finishedAt','result']);
    // Keep the parent until scheduled cleanup can remove its private decks.
    allow update: if signed() && resource.data.ownerId == request.auth.uid &&

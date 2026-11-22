@@ -57,6 +57,12 @@ export async function finishMatch(code: string, uid: string, result: MatchResult
     if (game.status !== 'ACTIVE' || !state || state.current || state.reaction || state.units.some(unit => unit.time <= 20)) {
       throw new Error('Concludi entrambe le fasi prima di chiudere la partita.')
     }
+    transaction.set(doc(db, 'matchResults', code), {
+      playerOneId: game.playerOneId, playerTwoId: game.playerTwoId,
+      playerOneName: game.playerOneName, playerTwoName: game.playerTwoName,
+      playerOneTeam: game.playerOneTeam, playerTwoTeam: game.playerTwoTeam,
+      matchSize: game.matchSize, result, finishedAt: serverTimestamp(),
+    })
     transaction.update(ref, { status: 'FINISHED', result, finishedAt: serverTimestamp(), updatedAt: serverTimestamp() })
   })
 }
