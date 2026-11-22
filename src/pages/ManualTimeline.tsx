@@ -175,7 +175,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
         ? <button className={className} type="button" key={unit.key} disabled={saving}
             onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
-            {text}<small>Attiva</small>
+            {text}<small>{unit.reserve ? 'Schiera e attiva' : 'Attiva'}</small>
           </button>
         : <span className={className} key={unit.key}>{text}</span>
     })}
@@ -297,10 +297,11 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       <label>MS bersaglio <select value={targetKey} onChange={event => setTargetKey(event.target.value)}>
         <option value="">Scegli un MS</option>
         {activationQueue(state).map(unit => <option key={unit.key} value={unit.key}>
-          {label(unit.id)} · {team(unit.seat) === 'RED' ? 'Rosso' : 'Blu'} · Fase {roundPhase(unit.time)}, TL {roundSlot(unit.time)}
+          {label(unit.id)} · {team(unit.seat) === 'RED' ? 'Rosso' : 'Blu'} · Fase {roundPhase(unit.time)}, TL {roundSlot(unit.time)}{unit.reserve ? ' · In riserva' : ''}
         </option>)}
       </select></label>
       {target && <>
+        {target.reserve && <p className="lead" role="status">Questo MS è in riserva. Verrà schierato alla sua prossima attivazione.</p>}
         <button className="button secondary" type="button" disabled={saving || target.reserve}
           onClick={() => update({ kind: 'defeat', key: target.key }, 'MS in Riserva · +2 TL.')}>Distrutto (+2 TL)</button>
         <form onSubmit={event => { event.preventDefault(); update({ kind: 'effect', key: target.key, delta: effectAmount }, 'Spostamento da effetto applicato.') }}>

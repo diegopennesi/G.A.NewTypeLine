@@ -39,8 +39,8 @@ export function VictoryBoard({ game, playerId, readOnly = false }: { game: Game;
             <button type="button" disabled={busy} aria-label={`Aggiungi un Garrison conquistato. Totale ${score.captured}. Più 2 VP.`} onClick={() => void update('captured')}>Garrison conquistati · {score.captured}<small>+2 VP</small></button>
             <button type="button" disabled={busy} aria-label={`Aggiungi un Garrison salvato. Totale ${score.rescued}. Più 2 VP.`} onClick={() => void update('rescued')}>Garrison salvati · {score.rescued}<small>+2 VP</small></button>
           </> : <>
-            <span>Garrison conquistati · {score.captured}</span>
-            <span>Garrison salvati · {score.rescued}</span>
+            <span>Garrison conquistati · {score.captured}<small>2 VP ciascuno</small></span>
+            <span>Garrison salvati · {score.rescued}<small>2 VP ciascuno</small></span>
           </>}
         </div>
       </div>
