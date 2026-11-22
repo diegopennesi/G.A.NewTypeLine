@@ -1,3 +1,5 @@
+import { unitSelectionRows } from '../data/cardSelectionRows'
+import { LobbyPresetPicker } from './LobbyPresetPicker'
 import { CardSelectionList } from '../components/CardSelectionList'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
@@ -9,17 +11,19 @@ import { useMatchClock } from '../features/useMatchClock'
 import { useAuth } from '../features/auth/useAuth'
 import { leaveLobby, setReady, subscribeToLobby } from '../services/lobbyService'
 import { useNavigate } from 'react-router-dom'
-import { unitCards } from '../data/unitCards'
 import { ManualTimeline } from './ManualTimeline'
 import { TacticsDeckPicker } from './TacticsDeckPicker'
 import { tacticsDeckSize } from '../data/tacticsCards'
-import { watchTacticsDeck, type TacticsDeck } from '../services/tacticsService'
+import { saveTacticsDeck, watchTacticsDeck, type TacticsDeck } from '../services/tacticsService'
 import './GameLobbyPage.css'
 
 export function GameLobbyPage() {
   const { gameCode = '' } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [preparation, setPreparation] = useState<'preset' | 'manual'>('preset')
+  const [appliedPreset, setAppliedPreset] = useState(0)
+  const [presetNotice, setPresetNotice] = useState('')
   const [phaseView, setPhaseView] = useState<{ code: string; phase: number } | null>(null)
   const [game, setGame] = useState<Game | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,15 +31,23 @@ export function GameLobbyPage() {
   const [ready, setReadyState] = useState(false)
   const [selection, setSelection] = useState<string[]>([])
 
-  useEffect(() => subscribeToLobby(gameCode, next => {
-    setGame(next)
-    if (!next) { setError('Questa lobby non esiste più.'); return }
-    const one = next.playerOneId === user?.uid
-    if (one ? next.playerOneReady : next.playerTwoReady) {
-      setSelection((one ? next.playerOneSquad : next.playerTwoSquad) ?? [])
-    }
-    if (next.status === 'WAITING') { setSelection([]); setReadyState(false) }
-  }, (reason) => setError(reason.message)), [gameCode, user?.uid])
+  useEffect(() => {
+    let previousStatus: Game['status'] | undefined
+    return subscribeToLobby(gameCode, next => {
+      setGame(next)
+      if (!next) { setError('Questa lobby non esiste più.'); return }
+      const one = next.playerOneId === user?.uid
+      if (one ? next.playerOneReady : next.playerTwoReady) {
+        setSelection((one ? next.playerOneSquad : next.playerTwoSquad) ?? [])
+      }
+      if (previousStatus === 'SETUP' && next.status === 'WAITING') {
+        setSelection([])
+        setPresetNotice('')
+        setReadyState(false)
+      }
+      previousStatus = next.status
+    }, reason => setError(reason.message))
+  }, [gameCode, user?.uid])
 
   const activity = game ? matchActivity(game) : null
   const deadline = activity?.expiresAt ?? null
@@ -103,20 +115,35 @@ export function GameLobbyPage() {
       <div><h2 id="invite-title">Invita il Giocatore 2</h2><p>Può scansionare questo QR dal cellulare oppure aprire il link condivisibile.</p><a className="invite-link" href={inviteUrl}>{inviteUrl}</a></div>
       <div className="qr-code"><QRCodeSVG value={inviteUrl} size={176} level="M" includeMargin title={`QR per entrare nella partita ${game.code}`} /></div>
     </section>}
-    {game.status !== 'ACTIVE' && <div className="lobby-preparation">
-    {game.status === 'SETUP' && <section className="squad-picker">
+    {game.status !== 'ACTIVE' && !myReady && user && <div className="lobby-setup-options">
+      <div className="tactics-controls" role="group" aria-label="Preparazione partita">
+        <button type="button" className="button secondary" aria-pressed={preparation === 'preset'}
+          disabled={ready} onClick={() => setPreparation('preset')}>Seleziona un preset</button>
+        <button type="button" className="button secondary" aria-pressed={preparation === 'manual'}
+          disabled={ready} onClick={() => setPreparation('manual')}>Componi manualmente</button>
+      </div>
+      {preparation === 'preset' && <LobbyPresetPicker key={deckKey} code={game.code} playerId={user.uid} size={squadSize} busy={ready || !deck}
+        onUse={(squad, savedCards) => {
+          setError(null)
+          setReadyState(true)
+          setPresetNotice('')
+          void saveTacticsDeck(game.code, user.uid, savedCards, deck?.randomized)
+            .then(() => { setSelection(squad); setAppliedPreset(value => value + 1); setPresetNotice('Squadra e mazzo applicati.') })
+            .catch(() => setError('Impossibile applicare il preset. Riprova.'))
+            .finally(() => setReadyState(false))
+        }} />}
+      {presetNotice && <p role="status">{presetNotice}</p>}
+    </div>}
+    {game.status !== 'ACTIVE' && <div className="lobby-preparation" hidden={preparation === 'preset' || myReady}>
+    <section className="squad-picker">
       <h2>Componi la tua squadra · {selection.length}/{squadSize}</h2>
       <CardSelectionList label="Cerca Unit Card"
-        rows={unitCards.map(unit => ({
-          id: unit.id, name: unit.name,
-          summary: `${unit.id} · ${unit.faction} · TL ${unit.startingTimeline}${unit.stats ? ` · HP ${unit.stats.hp} · VP ${unit.stats.vp}` : ''}`,
-          keywords: unit.stats?.weapons.map(weapon => weapon.name).join(' '),
-        }))}
+        rows={unitSelectionRows}
         selected={selection} limit={squadSize} disabled={myReady || ready}
         onToggle={id => setSelection(current => current.includes(id)
           ? current.filter(cardId => cardId !== id) : current.length < squadSize ? [...current, id] : current)} />
-    </section>}
-    {(waitingForPlayer || game.status === 'SETUP') && user && deck && <TacticsDeckPicker key={deckKey} code={game.code} playerId={user.uid} deck={deck} locked={myReady || ready} />}
+    </section>
+    {(waitingForPlayer || game.status === 'SETUP') && user && deck && <TacticsDeckPicker key={`${deckKey}/${appliedPreset}`} code={game.code} playerId={user.uid} deck={deck} locked={myReady || ready} />}
     </div>}
     {!waitingForPlayer && game.status !== 'ACTIVE' && <button className="button" disabled={ready || (!myReady && deck?.cards.length !== tacticsDeckSize) || (myReady && !game.playerOneReady) || (myReady && !game.playerTwoReady) || selection.length !== squadSize} onClick={() => { if (!user) return; setError(null); setReadyState(true); void setReady(game.code, user.uid, isPlayerOne, selection).then(() => setReadyState(false)).catch((reason) => { setReadyState(false); setError(reason instanceof Error ? reason.message : 'Impossibile confermare.') }) }}>{ready ? 'Conferma…' : myReady ? (game.playerOneReady && game.playerTwoReady ? 'Avvia partita' : 'Pronto · in attesa') : selection.length !== squadSize ? `Scegli ${squadSize} Unit Card` : deck?.cards.length !== tacticsDeckSize ? 'Salva il mazzo tattico' : 'Sono pronto'}</button>}
     {game.status === 'ACTIVE' && user && <ManualTimeline key={game.code} game={game} playerId={user.uid} deck={deck ?? { cards: [], randomized: false }} phase={phase} />}

@@ -8,6 +8,7 @@ import { drawnTacticsCards, type TacticsDeck, playTacticsCard, revertTacticsCard
 import { changeActivation, finishMatch } from './activationService'
 import type { Game } from '../models/game'
 import { initialActivation, nextActivation } from '../models/activation'
+import { removePreset, saveAvatar, savePreset } from './accountService'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
 
@@ -458,4 +459,34 @@ it('keeps random draws private, unlocks three more at the second phase and keeps
   const played = (await getDoc(doc(phone, 'games', code, 'tacticsPlays', 'pc'))).data()
   expect(played?.order).toEqual([deck.cards[3]])
   expect((await getDoc(privateRef)).data()).toEqual(deck)
+})
+
+it('protects personal avatars and presets and can apply a saved squad and deck to a lobby', async () => {
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  const profile = doc(pc, 'accounts', 'pc')
+  const units = ['ST01-U001', 'ST01-U003', 'ST01-U006']
+  const cards = ['ST01-T01', 'ST01-T02', 'ST01-T03', 'ST01-T04', 'ST01-T05', 'ST01-T06', 'ST01-T07', 'ST01-T08', 'ST01-T09']
+  await saveAvatar('pc', 'data:image/webp;base64,UklGRg==')
+  await assertFails(setDoc(profile, { avatar: 'https://example.com/profile.png' }))
+  await assertFails(getDoc(doc(phone, 'accounts', 'pc')))
+  await savePreset('pc', { id: 'test-squad', kind: 'squad', name: 'Squadra 3v3', cards: units })
+  await savePreset('pc', { id: 'test-deck', kind: 'deck', name: 'Mazzo', cards })
+  await assertFails(setDoc(doc(profile, 'presets', 'bad'), { kind: 'squad', name: 'Errata', cards: ['unknown', ...units.slice(1)] }))
+  await assertFails(getDoc(doc(phone, 'accounts', 'pc', 'presets', 'test-deck')))
+
+  const code = await createLobby('pc', 'PC', '3v3')
+  const savedSquad = (await getDoc(doc(profile, 'presets', 'test-squad'))).data()?.cards
+  const savedDeck = (await getDoc(doc(profile, 'presets', 'test-deck'))).data()?.cards
+  vi.mocked(getFirestoreService).mockReturnValue(phone as unknown as ReturnType<typeof getFirestoreService>)
+  await joinLobby(code, 'phone', 'Phone')
+  vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
+  await saveTacticsDeck(code, 'pc', savedDeck)
+  await setReady(code, 'pc', true, savedSquad)
+  await removePreset('pc', 'test-deck')
+  expect((await getDoc(doc(pc, 'games', code))).data()?.playerOneSquad).toEqual(units)
+  expect((await getDoc(doc(pc, 'games', code, 'tacticsDecks', 'pc'))).data()?.cards).toEqual(cards)
+  await saveAvatar('pc', null)
+  expect((await getDoc(profile)).data()?.avatar).toBeNull()
 })
