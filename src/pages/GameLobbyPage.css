@@ -207,3 +207,22 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .defeat-log li { display: flex; justify-content: space-between; gap: .4rem; padding-block: .35rem; border-top: 1px solid var(--hangar-border); overflow-wrap: anywhere; }
 .defeat-log li small { display: block; color: var(--hangar-muted); }
 .defeat-log li strong { white-space: nowrap; color: var(--turn-accent, var(--hangar-text)); }
+
+.player-list p { position: relative; isolation: isolate; overflow: hidden; align-content: center; min-width: 0; }
+.player-list p[data-portrait="true"] { padding-right: 2.5rem; }
+.player-list p > b { overflow-wrap: anywhere; }
+.player-list p > :is(img, i) { position: absolute; z-index: -1; inset: 0 0 0 auto; height: 100%; width: 4rem; object-fit: cover; object-position: center 38%; mask-image: linear-gradient(90deg, transparent, #000 70%); }
+.player-list p > i { display: grid; place-items: center; background: #121725; color: #fff; font-size: 1.5rem; font-style: normal; }
+.victory-total > b { min-width: 0; overflow-wrap: anywhere; }
+
+.unit-portrait { display: block; position: absolute; overflow: hidden; pointer-events: none; }
+.unit-portrait img { position: absolute; top: 50%; left: 50%; width: 440%; max-width: none; height: auto; transform: translate(calc(-1 * var(--portrait-x)), calc(-1 * var(--portrait-y))); }
+.timeline-unit { position: relative; isolation: isolate; overflow: hidden; }
+.timeline-unit-red { --unit-border: #ff9b89; }
+.timeline-unit-blue { --unit-border: #9dbdff; }
+.timeline-unit.timeline-unit-red, .timeline-unit.timeline-unit-blue { border-color: var(--unit-border); }
+.timeline-unit > .unit-portrait { z-index: -1; inset: 0 0 0 auto; width: min(75%, 5.25rem); opacity: .65; mask-image: linear-gradient(90deg, transparent, #000 70%); }
+.timeline-unit-label { display: grid; text-shadow: 0 1px 3px #000, 0 0 5px #000; }
+.timeline-hud-readout { position: relative; isolation: isolate; }
+.timeline-hud-readout > .unit-portrait { z-index: -1; inset: -.45rem 8% -.45rem auto; width: min(43%, 11rem); opacity: .68; mask-image: linear-gradient(90deg, transparent, #000 35%, #000 63%, transparent); }
+.timeline-hud-unit > strong, .timeline-hud-unit > span { text-shadow: 0 1px 4px #101218; }

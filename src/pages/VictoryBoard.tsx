@@ -23,13 +23,14 @@ export function VictoryBoard({ game, playerId, readOnly = false }: { game: Game;
     {(['one', 'two'] as const).map(seat => {
       const isOne = seat === 'one'
       const team = isOne ? game.playerOneTeam : game.playerTwoTeam
-      const color = team === 'RED' ? 'Rosso' : 'Blu'
-      const own = !readOnly && playerId === (isOne ? game.playerOneId : game.playerTwoId)
+      const self = playerId === (isOne ? game.playerOneId : game.playerTwoId)
+      const name = isOne ? game.playerOneName : game.playerTwoName
+      const own = !readOnly && self
       const score = scoreFor(game.victory, seat)
       const total = victoryTotal(score)
       return <div className="victory-team" data-team={team} key={seat}>
         <div className="victory-total">
-          <b>{color}</b>
+          <b>{self ? 'Tu' : name}</b>
           {own && <button type="button" aria-label="Sottrai 1 VP" disabled={busy || total === 0} onClick={() => void update('subtract')}>−</button>}
           <strong aria-live="polite">{total} VP</strong>
           {own && <button type="button" aria-label="Aggiungi 1 VP" disabled={busy} onClick={() => void update('add')}>+</button>}

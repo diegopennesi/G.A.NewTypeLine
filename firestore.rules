@@ -82,15 +82,17 @@ service cloud.firestore {
     after.get('phases', {}).diff(before.get('phases', {})).affectedKeys().hasOnly([id]) &&
     after.get('activationIds', {}).diff(before.get('activationIds', {})).affectedKeys().hasOnly([id]);
   }
+  function validAvatar(avatar) {
+   return avatar == null || avatar in [
+    'young-male', 'young-female', 'aggressive-male', 'aggressive-female',
+    'veteran-male', 'veteran-female', 'robot-male', 'robot-female', 'mystery'
+   ];
+  }
   match /accounts/{uid} {
    function ownsAccount() { return signed() && request.auth.uid == uid; }
    allow get: if ownsAccount();
    allow create, update: if ownsAccount() &&
-    request.resource.data.keys().hasOnly(['avatar']) &&
-    (request.resource.data.avatar == null || request.resource.data.avatar in [
-      'young-male', 'young-female', 'aggressive-male', 'aggressive-female',
-      'veteran-male', 'veteran-female', 'robot-male', 'robot-female', 'mystery'
-    ]);
+    request.resource.data.keys().hasOnly(['avatar']) && validAvatar(request.resource.data.avatar);
    match /presets/{presetId} {
     allow read, delete: if ownsAccount();
     allow create, update: if ownsAccount() && validPreset(request.resource.data);
@@ -106,6 +108,13 @@ service cloud.firestore {
    // A deck is readable only by its owner. The separate plays document contains revealed cards.
    function gamePath() { return /databases/$(database)/documents/games/$(code); }
    function currentGame() { return get(gamePath()).data; }
+   match /playerAvatars/{uid} {
+    allow get: if signed() && participant(currentGame()) &&
+     uid in [currentGame().playerOneId, currentGame().playerTwoId];
+    allow create, update: if signed() && request.auth.uid == uid && participant(currentGame()) &&
+     currentGame().status in ['WAITING','SETUP','ACTIVE'] &&
+     request.resource.data.keys().hasOnly(['avatar']) && validAvatar(request.resource.data.avatar);
+   }
    function victory(d) { return d.get('victory', {}); }
    function victoryScore(d, seat) { return victory(d).get(seat, {}); }
    function unitVP(id) {

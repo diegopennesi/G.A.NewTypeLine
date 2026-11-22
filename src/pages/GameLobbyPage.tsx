@@ -1,3 +1,4 @@
+import { MatchPlayers } from './MatchPlayers'
 import { DefeatLog } from './DefeatLog'
 import { VictoryBoard } from './VictoryBoard'
 import { unitSelectionRows } from '../data/cardSelectionRows'
@@ -108,10 +109,7 @@ export function GameLobbyPage() {
     <h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
     <div className="match-header">
       <div className="share-code"><span>Codice partita</span><strong>{game.code}</strong></div>
-      <div className="player-list" aria-label="Giocatori">
-        <p data-team={game.playerOneTeam}><b>Giocatore 1</b> <span>{isPlayerOne ? 'Tu' : game.playerOneName}{game.playerOneReady ? ' ✓' : ''}</span></p>
-        <p data-team={game.playerTwoTeam}><b>Giocatore 2</b> <span>{game.playerTwoId ? isPlayerTwo ? 'Tu' : game.playerTwoName : 'In attesa…'}{game.playerTwoReady ? ' ✓' : ''}</span></p>
-      </div>
+      {user && <MatchPlayers game={game} playerId={user.uid} />}
       {activation && <div className="phase-card" role="group" aria-label="Fase Timeline">
         {[1, 2].map(option => <button key={option} type="button" aria-pressed={option === phase}
           onClick={() => setPhaseView(option === currentPhase ? null : { code: game.code, phase: option })}>
