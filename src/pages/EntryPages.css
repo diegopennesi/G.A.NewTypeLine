@@ -97,7 +97,7 @@
 .login-showcase { grid-area: showcase; min-width: 0; }
 .showcase-scene {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(min-content, 1fr) auto;
   min-height: clamp(15rem, 28vw, 21rem);
   margin: 0;
   overflow: hidden;
@@ -106,10 +106,29 @@
   background: #1b1c23;
   animation: showcase-enter 220ms ease-out both;
 }
-.showcase-illustration { min-height: 8rem; }
-.showcase-art-hangar {
-  background: #232129 url('../assets/login-hangar.webp') center 43% / cover no-repeat;
+.showcase-illustration {
+  display: grid;
+  align-content: center;
+  gap: .4rem;
+  padding: clamp(.55rem, 2vw, 1rem);
+  background: #202228;
+  font-size: clamp(.66rem, 1.3vw, .85rem);
+  line-height: 1.2;
 }
+.preview-box { padding: .45rem; border: 1px solid #514849; border-radius: .35rem; background: #18191f; }
+.preview-control { display: inline-block; padding: .35em .45em; border: 1px solid #82736e; border-radius: .28rem; }
+.preview-current, .preview-timeline [data-active] { border-color: var(--entry-accent); }
+.preview-timeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; gap: .25rem; }
+.preview-timeline .preview-box { display: grid; gap: .2rem; padding: .2rem; text-align: center; overflow-wrap: anywhere; }
+.preview-unit { display: block; padding: .2rem .1rem; border-radius: .18rem; color: #fff; font-size: .85em; }
+.preview-unit[data-team="red"] { background: #9d3d34; }
+.preview-unit[data-team="blue"] { background: #2557b7; }
+.showcase-illustration small { display: block; margin-top: .15rem; }
+.preview-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; }
+.preview-presets .preview-box { display: grid; gap: .45rem; }
+.preview-preset-row { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; padding-top: .4rem; border-top: 1px solid #514849; }
+.preview-preset-row > :first-child { flex: 1 0 auto; }
+.preview-lobby { display: grid; gap: .65rem; }
 .showcase-scene figcaption {
   display: grid;
   gap: .25rem;
@@ -131,12 +150,6 @@
   font-size: 1.2rem;
 }
 .showcase-controls button:hover { border-color: var(--entry-accent); background: #30282a; }
-.showcase-art-timeline {
-  background: #232129 url('../assets/login-timeline.webp') center / cover no-repeat;
-}
-.showcase-art-reaction {
-  background: #232129 url('../assets/login-reaction.webp') center / cover no-repeat;
-}
 @keyframes showcase-enter {
   from { opacity: .55; }
   to { opacity: 1; }
