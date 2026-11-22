@@ -1,9 +1,10 @@
+import { avatars, type AvatarId } from '../data/avatars'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { CardSelectionList } from '../components/CardSelectionList'
 import { tacticSelectionRows, unitSelectionRows } from '../data/cardSelectionRows'
 import { useAuth } from '../features/auth/useAuth'
-import { prepareAvatar, removePreset, saveAvatar, savePreset, watchAvatar, watchPresets, type Preset } from '../services/accountService'
+import { removePreset, saveAvatar, savePreset, watchAvatar, watchPresets, type Preset } from '../services/accountService'
 import './AccountPage.css'
 
 function draftPreset(kind: Preset['kind']): Preset {
@@ -15,7 +16,7 @@ export function AccountPage() {
   const uid = user?.uid
   const { state } = useLocation()
   const backTo = (state as { backTo?: string } | null)?.backTo
-  const [avatar, setAvatar] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<AvatarId | null>(null)
   const [presets, setPresets] = useState<Preset[]>([])
   const [draft, setDraft] = useState<Preset | null>(null)
   const [size, setSize] = useState(3)
@@ -63,21 +64,24 @@ export function AccountPage() {
     {backTo && /^\/games\/[A-Z0-9]{8}$/.test(backTo) && <Link className="operations-back" to={backTo}>← Torna alla lobby</Link>}
     <h1 id="account-title">Account</h1>
     <section className="operation-panel account-profile" aria-labelledby="profile-title">
-      {avatar ? <img className="profile-avatar" src={avatar} alt="" /> :
-        <span className="profile-avatar" aria-hidden="true">{person.slice(0, 1).toUpperCase()}</span>}
       <div>
-        <h2 id="profile-title">Immagine profilo</h2>
+        <h2 id="profile-title">Avatar profilo</h2>
         <p>{person}</p>
-        <label className="field">Carica un’immagine
-          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy || !uid}
-            onChange={event => {
-              const file = event.target.files?.[0]
-              if (file && uid) void run(async () => saveAvatar(uid, await prepareAvatar(file)), 'Immagine aggiornata.')
-              event.target.value = ''
-            }} />
-        </label>
-        {avatar && <button type="button" className="button secondary" disabled={busy}
-          onClick={() => uid && void run(() => saveAvatar(uid, null), 'Immagine rimossa.')}>Rimuovi immagine</button>}
+      </div>
+      <div className="avatar-options" role="group" aria-label="Scegli un avatar">
+        {[...avatars, { id: null, label: 'Nessun avatar' }].map(option =>
+          <button key={option.id ?? 'none'} type="button" className="avatar-option"
+            aria-pressed={avatar === option.id} disabled={busy || !uid}
+            onClick={() => {
+              if (uid && avatar !== option.id) {
+                void run(() => saveAvatar(uid, option.id), option.id ? 'Avatar aggiornato.' : 'Avatar rimosso.')
+              }
+            }}>
+            {'src' in option ? <img src={option.src} alt="" width="112" height="112" /> :
+              <span className="avatar-symbol" aria-hidden="true">{option.id ? '?' : '—'}</span>}
+            <span>{option.label}</span>
+          </button>
+        )}
       </div>
     </section>
     {notice && <p role="status">{notice}</p>}

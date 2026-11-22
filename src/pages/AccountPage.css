@@ -1,8 +1,5 @@
 .account-page { display: grid; gap: 1rem; }
-.account-profile { display: flex; align-items: flex-start; gap: .9rem; flex-wrap: wrap; }
-.account-profile > div { display: grid; gap: .6rem; min-width: 0; }
 .account-profile p { margin: 0; color: var(--hangar-muted); overflow-wrap: anywhere; }
-.profile-avatar { display: grid; place-items: center; width: 4rem; height: 4rem; border: 1px solid var(--hangar-control-border); border-radius: 50%; background: var(--hangar-deck); object-fit: cover; font-size: 1.6rem; }
 .account-link { display: inline-flex; align-items: center; gap: .4rem; text-decoration: none; }
 .account-link img { width: 1.45rem; height: 1.45rem; border-radius: 50%; object-fit: cover; }
 .account-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
@@ -21,3 +18,12 @@
 @media (max-width: 630px) {
   .account-lists, .lobby-preset-fields { grid-template-columns: minmax(0,1fr); }
 }
+
+.account-profile .avatar-options { display: grid; width: 100%; gap: .55rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.4rem), 1fr)); }
+.avatar-option { display: grid; align-content: start; gap: .4rem; padding: .35rem; min-width: 0; font: inherit; font-size: .78rem; line-height: 1.25; color: var(--hangar-text); background: var(--hangar-deck); border: 1px solid var(--hangar-control-border); border-radius: .45rem; cursor: pointer; }
+.avatar-option[aria-pressed="true"] { border-color: var(--hangar-accent); box-shadow: inset 0 0 0 1px var(--hangar-accent); color: var(--hangar-accent); }
+.avatar-option:focus-visible { outline: 2px solid var(--hangar-accent); outline-offset: 2px; }
+.avatar-option img, .avatar-symbol { width: 100%; height: auto; aspect-ratio: 1; border-radius: .24rem; object-fit: cover; }
+.avatar-symbol, .account-mystery { display: grid; place-items: center; background: var(--hangar-deck); border: 1px solid var(--hangar-control-border); font-weight: 700; }
+.avatar-symbol { font-size: 2rem; }
+.account-mystery { width: 1.45rem; height: 1.45rem; border-radius: 50%; }

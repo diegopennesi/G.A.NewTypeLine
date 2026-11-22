@@ -468,7 +468,10 @@ it('protects personal avatars and presets and can apply a saved squad and deck t
   const profile = doc(pc, 'accounts', 'pc')
   const units = ['ST01-U001', 'ST01-U003', 'ST01-U006']
   const cards = ['ST01-T01', 'ST01-T02', 'ST01-T03', 'ST01-T04', 'ST01-T05', 'ST01-T06', 'ST01-T07', 'ST01-T08', 'ST01-T09']
-  await saveAvatar('pc', 'data:image/webp;base64,UklGRg==')
+  await saveAvatar('pc', 'young-male')
+  expect((await getDoc(profile)).data()?.avatar).toBe('young-male')
+  await assertFails(setDoc(profile, { avatar: 'data:image/webp;base64,UklGRg==' }))
+  await assertFails(setDoc(profile, { avatar: 'custom' }))
   await assertFails(setDoc(profile, { avatar: 'https://example.com/profile.png' }))
   await assertFails(getDoc(doc(phone, 'accounts', 'pc')))
   await savePreset('pc', { id: 'test-squad', kind: 'squad', name: 'Squadra 3v3', cards: units })
