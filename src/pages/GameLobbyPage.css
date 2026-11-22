@@ -235,9 +235,11 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .card-selection-text, .tactics-illustrated { text-shadow: 0 1px 3px #000, 0 0 4px #000; }
 .card-selection-check { z-index: 0; }
 .tactics-controls > .tactics-illustrated { flex: 0 1 13rem; text-align: left; }
-.card-artwork[data-tactic] img, .card-selection-row > .card-artwork img { min-width: 100%; height: auto; min-height: 250%; object-fit: cover; }
+.card-selection-row > .card-artwork:not([data-tactic]) img { min-width: 100%; height: auto; min-height: 250%; object-fit: cover; }
 .timeline-unit-label { display: grid; text-shadow: 0 1px 3px #000, 0 0 5px #000; }
 .timeline-hud-readout { position: relative; isolation: isolate; }
 .timeline-hud-readout > .card-artwork { z-index: -1; inset: -.45rem 0 -.45rem auto; width: min(64%, 32rem); opacity: .82; mask-image: linear-gradient(90deg, transparent, #000 24%, #000 77%, transparent); }
 .timeline-hud-unit > strong, .timeline-hud-unit > span { text-shadow: 0 1px 4px #101218; }
 .timeline-hud-readout > .card-artwork img { left: 36%; min-width: 105%; height: auto; min-height: 330%; object-fit: cover; }
+
+.card-artwork[data-tactic] img { width: max(100%, 9rem); height: auto; }
