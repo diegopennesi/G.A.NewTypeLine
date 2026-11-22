@@ -61,8 +61,6 @@
 .lobby-preparation > .squad-picker { margin: 0; }
 .lobby-preparation .card-selection { margin: 0; }
 .lobby-preparation .lead { margin: 0; }
-.turn-strip { min-height: 44px; padding: .55rem .65rem; border: 1px solid var(--hangar-border); border-radius: .35rem; background: var(--hangar-deck); }
-.turn-strip[data-turn="own"] { border-color: var(--hangar-accent); color: var(--hangar-text); }
 @media (min-width: 850px) {
   .lobby-page:has(.lobby-preparation > .squad-picker + .squad-picker) { max-width: 66rem; }
   .lobby-preparation:has(> .squad-picker + .squad-picker) { grid-template-columns: 1fr 1fr; align-items: start; }

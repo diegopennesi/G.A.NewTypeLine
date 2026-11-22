@@ -150,6 +150,11 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
   const wheelSlot = phaseSlots.find(item => item.time === wheelTime) ??
     phaseSlots.find(item => item.time === round) ?? phaseSlots[0]
 
+  function startUnit(key: string) {
+    setDelta('')
+    update({ kind: 'start', key }, 'Attivazione iniziata.')
+  }
+
   function renderSlot({ slot, time, slotUnits, slotMarkers }: (typeof phaseSlots)[number]) {
     return <>
     {canLand(time)
@@ -174,7 +179,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       }
       return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
         ? <button className={className} type="button" key={unit.key} disabled={saving}
-            onClick={() => { setDelta(''); update({ kind: 'start', key: unit.key }, 'Attivazione iniziata.') }}>
+            onClick={() => startUnit(unit.key)}>
             {text}<small>{unit.reserve ? 'Schiera e attiva' : 'Attiva'}</small>
           </button>
         : <span className={className} key={unit.key}>{text}</span>
@@ -182,15 +187,31 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </>
   }
 
+  const turnUnit = current ? activeUnit : next.unit
+  const turnTeam = turnUnit ? team(turnUnit.seat) : null
+  const turnStatus = completed ? 'Fasi concluse' : current ? 'In attivazione' : next.tie ? 'Spareggio' : 'Prossimo MS'
+
   return <section className="manual-timeline" aria-labelledby="manual-timeline-title">
     <h2 id="manual-timeline-title">Timeline</h2>
-    <div className="timeline-instructions turn-strip" data-turn={current ? ownTurn ? 'own' : 'opponent' : undefined}>
-      <p aria-live="polite">{saving ? 'Salvataggio…' : completed ? 'Fasi concluse.' : current
-        ? `In attivazione: ${label(activeUnit?.id)} · Fase ${roundPhase(round)}, TL ${roundSlot(round)}`
-        : next.tie ? `Spareggio a TL ${roundSlot(round)}`
-        : `Prossimo MS: ${label(next.unit?.id)} · Fase ${roundPhase(round)}, TL ${roundSlot(round)}`}</p>
+    <div className="timeline-instructions timeline-hud" data-team={turnTeam}>
+      <div className="timeline-hud-readout" aria-live="polite">
+        <div className="timeline-hud-unit">
+          <span className="timeline-hud-status"><i aria-hidden="true" />{turnStatus}</span>
+          {turnUnit && !completed && <strong>{label(turnUnit.id)}</strong>}
+          {!completed && turnTeam && <span>{turnUnit?.seat === seat ? 'Tuo turno' : 'Turno avversario'} · {turnTeam === 'RED' ? 'Rosso' : 'Blu'}</span>}
+        </div>
+        {!completed && <div className="timeline-hud-position">
+          <span>Fase <b>{roundPhase(round)}</b></span>
+          <span>TL <b>{roundSlot(round)}</b></span>
+        </div>}
+      </div>
       {!current && next.tie && !completed && <button type="button" disabled={saving} onClick={rollInitiative}>Tira i dadi</button>}
+      {!current && !completed && turnUnit?.seat === seat && <button type="button" disabled={saving}
+        onClick={() => startUnit(turnUnit.key)}>
+        {turnUnit.reserve ? 'Schiera e attiva' : 'Attiva'}
+      </button>}
       {completed && <button className="button" type="button" onClick={() => finishDialog.current?.showModal()}>Concludi partita</button>}
+      {saving && <small role="status">Salvataggio…</small>}
     </div>
     {completed && <dialog ref={finishDialog} className="finish-match-dialog" aria-labelledby="finish-match-title">
       <h3 id="finish-match-title">Concludere la partita?</h3>

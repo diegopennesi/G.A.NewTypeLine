@@ -10,3 +10,5 @@ export function scoreFor(victory: Victory | undefined, seat: VictorySeat): Victo
 export function victoryTotal(score: VictoryScore) {
   return score.destroyed + score.manual + 2 * (score.captured + score.rescued)
 }
+
+export type DefeatEvent = { version: number; unitId: string; creditedTo: VictorySeat; vp: number }

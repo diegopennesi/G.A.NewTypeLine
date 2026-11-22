@@ -524,7 +524,11 @@ it('orders targets and synchronizes destruction, Garrison and manual VP for both
   await Promise.all([changeVictory(code, 'phone', 'captured'), changeVictory(code, 'phone', 'rescued')])
   await changeVictory(code, 'phone', 'add')
   await changeVictory(code, 'phone', 'subtract')
-  const saved = (await getDoc(doc(pc, 'games', code))).data()?.victory
+  const recorded = (await getDoc(doc(pc, 'games', code))).data()
+  expect(recorded?.defeats).toEqual([{ version: 3, unitId: 'EX01-U02', creditedTo: 'two', vp: 5 }])
+  expect((await getDoc(ref)).data()?.defeats).toEqual(recorded?.defeats)
+  await assertFails(updateDoc(ref, { defeats: [], updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  const saved = recorded?.victory
   expect(saved.two).toEqual({ destroyed: 5, manual: 0, captured: 1, rescued: 1 })
   expect(saved.one).toBeUndefined()
   await assertFails(updateDoc(ref, { 'victory.one.manual': 1, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))

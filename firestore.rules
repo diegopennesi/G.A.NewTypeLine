@@ -130,7 +130,10 @@ service cloud.firestore {
      next.units == before.units.removeAll([target]).concat([moved]) &&
      updated.diff(old).affectedKeys().hasOnly([seat]) &&
      newScore.diff(score).affectedKeys().hasOnly(['destroyed']) &&
-     newScore.get('destroyed', 0) == score.get('destroyed', 0) + unitVP(target.id);
+     newScore.get('destroyed', 0) == score.get('destroyed', 0) + unitVP(target.id) &&
+     request.resource.data.defeats == resource.data.get('defeats', []).concat([{
+      'version': next.version, 'unitId': target.id, 'creditedTo': seat, 'vp': unitVP(target.id)
+     }]);
    }
    function writesVictory() {
     let seat = request.auth.uid == resource.data.playerOneId ? 'one' : 'two';
@@ -151,8 +154,9 @@ service cloud.firestore {
    function writesActivation() {
     let before = resource.data.get('activation', {'version': 0});
     let next = request.resource.data.activation;
-    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt','victory']) &&
-     (next.lastKind == 'defeat' ? awardsDefeat(before, next) : victory(resource.data) == victory(request.resource.data)) &&
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt','victory','defeats']) &&
+     (next.lastKind == 'defeat' ? awardsDefeat(before, next) : (
+      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['victory','defeats']))) &&
      next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind','reaction','phaseTwoSeats']) &&
      next.version is int && next.version == before.version + 1 &&
      next.units is list && next.units.size() == resource.data.playerOneSquad.size() + resource.data.playerTwoSquad.size() &&
