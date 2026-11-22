@@ -502,9 +502,13 @@ it('protects personal avatars and presets and can apply a saved squad and deck t
   await assertFails(getDoc(doc(stranger, 'games', code, 'playerAvatars', 'phone')))
   vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
   await saveTacticsDeck(code, 'pc', savedDeck)
-  await setReady(code, 'pc', true, savedSquad)
+  await setReady(code, 'pc', true, savedSquad, { squad: 'test-squad', deck: 'test-deck' })
   const snapshot = doc(pc, 'accounts', 'pc', 'matchDecks', code)
-  expect((await getDoc(snapshot)).data()?.cards).toEqual(cards)
+  expect((await getDoc(snapshot)).data()).toEqual({
+    cards, squad: units,
+    squadPreset: { id: 'test-squad', name: 'Squadra 3v3' },
+    deckPreset: { id: 'test-deck', name: 'Mazzo' },
+  })
   await assertFails(getDoc(doc(phone, 'accounts', 'pc', 'matchDecks', code)))
   await assertFails(updateDoc(snapshot, { cards: [...cards].reverse() }))
   await removePreset('pc', 'test-deck')

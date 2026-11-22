@@ -33,3 +33,7 @@
 .account-history-row summary { cursor: pointer; }
 .account-history-row p { margin: .35rem 0; }
 .account-history-row small { color: var(--hangar-muted); }
+
+.account-list-heading { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; }
+.account-list-heading h2 { margin: 0; }
+.account-add-button { display: grid; place-items: center; width: 44px; min-width: 44px; padding: 0; font-size: 1.25rem; }

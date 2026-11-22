@@ -12,6 +12,9 @@ export type MatchHistoryEntry = {
   finishedAt: number
   outcome: 'win' | 'loss' | 'draw' | 'interrupted'
   cards: string[] | null
+  squad: string[] | null
+  squadName: string | null
+  deckName: string | null
 }
 
 export async function loadMatchHistory(uid: string): Promise<MatchHistoryEntry[]> {
@@ -22,8 +25,8 @@ export async function loadMatchHistory(uid: string): Promise<MatchHistoryEntry[]
     getDocs(query(collection(db, 'games'), seatFilter)),
     getDocs(collection(db, 'accounts', uid, 'matchDecks')),
   ])
-  const snapshots = new Map(decks.docs.map(entry => [entry.id, entry.data().cards as string[]]))
-  const legacyCodes = new Set(legacy.docs.map(entry => entry.id))
+  const snapshots = new Map(decks.docs.map(entry => [entry.id, entry.data() as { cards: string[]; squad?: string[]; squadPreset?: { name: string }; deckPreset?: { name: string } }]))
+  const legacyGames = new Map(legacy.docs.map(entry => [entry.id, entry.data() as Game]))
   const matches = new Map<string, RecordedMatch>()
   for (const entry of legacy.docs) {
     const game = entry.data() as Game
@@ -37,16 +40,20 @@ export async function loadMatchHistory(uid: string): Promise<MatchHistoryEntry[]
       const first = match.playerOneId === uid
       const team = first ? match.playerOneTeam : match.playerTwoTeam
       const storedDeck = snapshots.get(code)
-      const legacyDeck = !storedDeck && legacyCodes.has(code)
+      const legacyDeck = !storedDeck && legacyGames.has(code)
         ? (await getDoc(doc(db, 'games', code, 'tacticsDecks', uid))).data()?.cards as string[] | undefined
         : undefined
-      const cards = storedDeck ?? legacyDeck
+      const cards = storedDeck?.cards ?? legacyDeck
+      const game = legacyGames.get(code)
       return {
         code,
         opponent: first ? match.playerTwoName : match.playerOneName,
         size: match.matchSize,
         finishedAt: match.finishedAt.toMillis(),
         outcome: match.result === 'INTERRUPTED' ? 'interrupted' : match.result === 'DRAW' ? 'draw' : match.result === team ? 'win' : 'loss',
+        squad: storedDeck?.squad ?? (first ? game?.playerOneSquad : game?.playerTwoSquad) ?? null,
+        squadName: storedDeck?.squadPreset?.name ?? null,
+        deckName: storedDeck?.deckPreset?.name ?? null,
         cards: cards?.length === 9 ? cards : null,
       }
     }))
