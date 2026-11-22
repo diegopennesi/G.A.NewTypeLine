@@ -243,3 +243,12 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .timeline-hud-readout > .card-artwork img { left: 36%; min-width: 105%; height: auto; min-height: 330%; object-fit: cover; }
 
 .card-artwork[data-tactic] img { width: max(100%, 9rem); height: auto; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .timeline-hud-unit, .timeline-hud-readout > .card-artwork {
+    animation: timeline-turn-enter 180ms ease-out both;
+  }
+  @keyframes timeline-turn-enter {
+    from { opacity: .35; }
+  }
+}

@@ -196,8 +196,8 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     <h2 id="manual-timeline-title">Timeline</h2>
     <div className="timeline-instructions timeline-hud" data-team={turnTeam}>
       <div className="timeline-hud-readout" aria-live="polite">
-        {!completed && turnUnit && <CardArtwork cardId={turnUnit.id} />}
-        <div className="timeline-hud-unit">
+        {!completed && turnUnit && <CardArtwork key={turnUnit.key} cardId={turnUnit.id} />}
+        <div className="timeline-hud-unit" key={`${turnUnit?.key ?? 'no-unit'}/${turnStatus}`}>
           <span className="timeline-hud-status"><i aria-hidden="true" />{turnStatus}</span>
           {turnUnit && !completed && <strong>{label(turnUnit.id)}</strong>}
           {!completed && turnTeam && <span>{turnUnit?.seat === seat ? 'Tuo turno' : 'Turno avversario'} · {turnTeam === 'RED' ? 'Rosso' : 'Blu'}</span>}
