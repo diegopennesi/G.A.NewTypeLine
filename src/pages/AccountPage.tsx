@@ -1,6 +1,6 @@
 import { AccountMatchHistory } from './AccountMatchHistory'
 import { avatars, type AvatarId } from '../data/avatars'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { CardSelectionList } from '../components/CardSelectionList'
 import { tacticSelectionRows, unitSelectionRows } from '../data/cardSelectionRows'
@@ -19,6 +19,7 @@ export function AccountPage() {
   const backTo = (state as { backTo?: string } | null)?.backTo
   const [avatar, setAvatar] = useState<AvatarId | null>(null)
   const [presets, setPresets] = useState<Preset[]>([])
+  const originalDraft = useRef<Preset | null>(null)
   const [draft, setDraft] = useState<Preset | null>(null)
   const [size, setSize] = useState(3)
   const [busy, setBusy] = useState(false)
@@ -48,6 +49,12 @@ export function AccountPage() {
   }
 
   function edit(preset: Preset) {
+    if (draft?.id === preset.id) return
+    const original = originalDraft.current
+    if (draft && original && (draft.name !== original.name || draft.cards !== original.cards ||
+      (draft.kind === 'squad' && size !== (original.cards.length === 5 ? 5 : 3))) &&
+      !window.confirm('Scartare le modifiche al preset aperto?')) return
+    originalDraft.current = preset
     setDraft(preset)
     setSize(preset.cards.length === 5 ? 5 : 3)
   }
@@ -99,8 +106,12 @@ export function AccountPage() {
         <ul className="account-preset-list">
           {presets.filter(item => item.kind === kind).map(item => <li key={item.id}>
             <div><strong>{item.name}</strong><small>{item.cards.length} carte</small></div>
-            <button type="button" className="button secondary" disabled={busy} onClick={() => edit(item)}>Modifica</button>
-            <button type="button" className="button secondary" disabled={busy}
+            <button type="button" className="button secondary account-icon-button" disabled={busy}
+              aria-label={`Modifica ${item.name}`} title="Modifica" onClick={() => edit(item)}>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m13.5 6.5 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11z" /></svg>
+            </button>
+            <button type="button" className="button secondary account-icon-button" disabled={busy}
+              aria-label={`Elimina ${item.name}`} title="Elimina"
               onClick={() => {
                 if (uid && window.confirm(`Eliminare «${item.name}»?`)) {
                   void run(async () => {
@@ -108,14 +119,16 @@ export function AccountPage() {
                     if (draft?.id === item.id) setDraft(null)
                   }, 'Preset eliminato.')
                 }
-              }}>Elimina</button>
+              }}>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7m4-7v7" /></svg>
+            </button>
           </li>)}
         </ul>
       </section>)}
     </div>
-    {draft && <form className="operation-panel account-editor" onSubmit={submit}>
+    {draft && <form key={draft.id} className="operation-panel account-editor" onSubmit={submit}>
       <h2>{draft.kind === 'squad' ? 'Squadra' : 'Mazzo'} · {draft.cards.length}/{limit}</h2>
-      <label className="field">Nome<input required maxLength={48} value={draft.name} disabled={busy}
+      <label className="field">Nome<input autoFocus required maxLength={48} value={draft.name} disabled={busy}
         onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
       {draft.kind === 'squad' && <label className="field">Formato
         <select value={size} disabled={busy} onChange={event => {
