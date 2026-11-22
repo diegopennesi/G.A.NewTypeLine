@@ -25,14 +25,7 @@
   overflow-wrap: anywhere;
 }
 
-.entry-label {
-  margin: 0 0 1rem;
-  color: var(--entry-accent);
-  font-size: .8rem;
-  font-weight: 650;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
+
 
 .auth-intro .lead, .dashboard-heading .lead {
   max-width: 39ch;
@@ -79,7 +72,6 @@
 @media (max-width: 720px) {
   .auth-page.entry-surface { align-content: start; padding: 2.4rem 1rem; }
   .auth-layout { grid-template-columns: minmax(0, 1fr); gap: 1.65rem; max-width: 28rem; }
-  .entry-label { margin-bottom: .7rem; }
   .entry-dashboard .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
   .entry-dashboard .panel { padding: 1rem; }
 }
@@ -160,4 +152,16 @@
   }
   .auth-intro h1 { font-size: clamp(2rem, 9vw, 3rem); }
   .showcase-scene { min-height: 12rem; }
+}
+
+
+.auth-intro .login-wordmark {
+  display: block;
+  width: min(100%, 31rem);
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+}
+@media (max-width: 720px) {
+  .auth-intro .login-wordmark { width: min(100%, 22rem); }
 }

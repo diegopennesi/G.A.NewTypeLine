@@ -2,19 +2,16 @@ import './EntryPages.css'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
-import { SiteTopBar } from '../components/SiteTopBar'
+import wordmark from '../assets/newtypeline-wordmark.webp'
 import { LoginShowcase } from './LoginShowcase'
 function formatError(error: unknown) { return error instanceof Error ? error.message.replace(/^Firebase: /, '') : 'Si è verificato un errore. Riprova.' }
 export function AuthPage() { const { user, configured, signInWithEmail, signInWithGoogle, signUpWithEmail } = useAuth(); const location = useLocation(); const destination = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'; const [isRegistration, setIsRegistration] = useState(false); const [error, setError] = useState<string | null>(null); const [pending, setPending] = useState(false); if (user) return <Navigate to={destination} replace />
   async function perform(action: () => Promise<void>) { setError(null); setPending(true); try { await action() } catch (reason) { setError(formatError(reason)) } finally { setPending(false) } }
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); const email = String(data.get('email')); const password = String(data.get('password')); void perform(() => isRegistration ? signUpWithEmail(email, password) : signInWithEmail(email, password)) }
-  return <div className="auth-shell">
-    <SiteTopBar />
-    <main className="auth-page entry-surface">
+  return <main className="auth-page entry-surface">
     <div className="auth-layout">
       <header className="auth-intro">
-        <p className="entry-label">Companion per Gundam Assemble</p>
-        <h1 id="product-title">La Timeline al tavolo</h1>
+        <h1 id="product-title"><img className="login-wordmark" src={wordmark} width={1000} height={86} alt="G.A. NewTypeLine" /></h1>
       </header>
       <section className="auth-card entry-glass" aria-labelledby="auth-title">
         <h2 id="auth-title">{isRegistration ? 'Crea il tuo account' : 'Accedi'}</h2>
@@ -40,6 +37,5 @@ export function AuthPage() { const { user, configured, signInWithEmail, signInWi
       </section>
       <LoginShowcase />
     </div>
-    </main>
-  </div>
+  </main>
 }
