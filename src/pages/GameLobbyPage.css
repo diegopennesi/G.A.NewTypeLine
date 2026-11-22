@@ -160,16 +160,20 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .match-result-option { display: flex; align-items: center; gap: .55rem; min-height: 44px; cursor: pointer; }
 .match-result-option input { accent-color: var(--hangar-accent); }
 
-.match-title-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .8rem; }
-.victory-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; flex: 0 1 26rem; }
-.victory-team { --team-border: #ac5b50; background: #462621; border: 1px solid var(--team-border); border-radius: .5rem; padding: .45rem; min-width: 0; }
+.victory-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.match-header > .victory-board { flex: 1 1 23rem; }
+.victory-team { display: grid; grid-template-rows: auto 1fr; --team-border: #ac5b50; background: #462621; border: 1px solid var(--team-border); border-radius: .5rem; padding: .45rem; min-width: 0; }
 .victory-team[data-team="BLUE"] { --team-border: #587dce; background: #20355d; }
-.victory-total { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .3rem; }
+.victory-total { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .3rem; min-height: 44px; }
 .victory-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .victory-board button { color: inherit; background: #15151c60; border: 1px solid var(--team-border); border-radius: .3rem; font: inherit; cursor: pointer; }
 .victory-board button:disabled { opacity: .55; cursor: default; }
 .victory-total button { min-width: 44px; min-height: 44px; }
 .victory-garrisons { display: grid; gap: .25rem; margin-top: .35rem; font-size: .8rem; }
-.victory-garrisons button { text-align: left; min-height: 44px; padding: .3rem; }
+.victory-garrisons > :is(button, span) { display: block; text-align: left; min-height: 44px; padding: .3rem; border: 1px solid var(--team-border); border-radius: .3rem; }
 .victory-garrisons small { display: block; }
 .victory-board > .error { grid-column: 1 / -1; }
+
+@media (max-width: 640px) {
+  .match-header > .victory-board { flex-basis: 100%; grid-column: 1 / -1; }
+}

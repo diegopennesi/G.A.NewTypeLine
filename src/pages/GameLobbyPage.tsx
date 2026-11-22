@@ -103,9 +103,7 @@ export function GameLobbyPage() {
   return <section className={game.status === 'ACTIVE' ? 'lobby-page lobby-page-active' : 'lobby-page'}>
     {error && <p className="message error" role="alert">{error}</p>}
     <header className="operation-heading">
-    <div className="match-title-row"><h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
-      {game.status === 'ACTIVE' && user && <VictoryBoard game={game} playerId={user.uid} />}
-    </div>
+    <h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
     <div className="match-header">
       <div className="share-code"><span>Codice partita</span><strong>{game.code}</strong></div>
       <div className="player-list" aria-label="Giocatori">
@@ -118,6 +116,7 @@ export function GameLobbyPage() {
           Fase {option}{option === currentPhase && <small>Corrente</small>}
         </button>)}
       </div>}
+      {activation && user && <VictoryBoard game={game} playerId={user.uid} />}
     </div>
     </header>
     {waitingForPlayer ? <p className="lead">Condividi il codice o fai scansionare il QR. La lobby si aggiornerà automaticamente quando l’altro giocatore entrerà.</p> : game.status !== 'ACTIVE' && <p className="lead">Formato {game.matchSize}. I colori sono assegnati casualmente. Scegli le unità e conferma la tua squadra.</p>}
