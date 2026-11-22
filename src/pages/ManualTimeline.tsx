@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } fr
 import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
 import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
-import type { Game } from '../models/game'
+import { matchResultLabels, type Game, type MatchResult } from '../models/game'
 import { changeActivation, finishMatch } from '../services/activationService'
 import { drawnTacticsCards, playTacticsCard, type TacticsDeck, revertTacticsCard, watchTacticsPlays, type TacticsPlays } from '../services/tacticsService'
 
@@ -22,6 +22,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
   const [targetKey, setTargetKey] = useState('')
   const [selectedTactic, setSelectedTactic] = useState<string | null>(null)
   const [shownMarker, setShownMarker] = useState<string | null>(null)
+  const [result, setResult] = useState<MatchResult | ''>('')
   const finishDialog = useRef<HTMLDialogElement>(null)
   const [playsByPlayer, setPlaysByPlayer] = useState<Record<string, TacticsPlays>>({})
   useEffect(() => {
@@ -193,13 +194,20 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </div>
     {completed && <dialog ref={finishDialog} className="finish-match-dialog" aria-labelledby="finish-match-title">
       <h3 id="finish-match-title">Concludere la partita?</h3>
-      <p>Entrambi i giocatori vedranno la partita come conclusa.</p>
+      <p>L’esito sarà visibile a entrambi i giocatori.</p>
+      <fieldset disabled={saving}>
+        <legend>Esito della partita</legend>
+        {(Object.keys(matchResultLabels) as MatchResult[]).map(option => <label key={option} className="match-result-option">
+          <input type="radio" name="match-result" checked={result === option} onChange={() => setResult(option)} />
+          {matchResultLabels[option]}
+        </label>)}
+      </fieldset>
       <div className="tactics-controls">
         <button type="button" className="button secondary" autoFocus disabled={saving}
           onClick={() => finishDialog.current?.close()}>Annulla</button>
-        <button type="button" className="button" disabled={saving}
-          onClick={() => void run(async () => {
-            await finishMatch(game.code, playerId)
+        <button type="button" className="button" disabled={saving || !result}
+          onClick={() => result && void run(async () => {
+            await finishMatch(game.code, playerId, result)
             finishDialog.current?.close()
           }, 'Partita conclusa.')}>{saving ? 'Salvataggio…' : 'Conferma conclusione'}</button>
       </div>

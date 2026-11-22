@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { initialActivation, nextActivation, roundPhase } from '../models/activation'
-import type { Game } from '../models/game'
+import { matchResultLabels, type Game } from '../models/game'
 import { formatMatchTime, matchActivity } from '../models/matchActivity'
 import { useMatchClock } from '../features/useMatchClock'
 import { useAuth } from '../features/auth/useAuth'
@@ -68,8 +68,14 @@ export function GameLobbyPage() {
 
   if (error && !game) return <p className="message error">{error} <Link to="/">Dashboard</Link></p>
   if (!game) return <p>Caricamento della lobby…</p>
+  const belongsToPlayer = user && (game.playerOneId === user.uid || game.playerTwoId === user.uid)
   if (game.status === 'FINISHED') return <section className="lobby-page">
-    <h1>Partita chiusa</h1>
+    <h1>{belongsToPlayer && game.result ? 'Partita conclusa' : 'Partita chiusa'}</h1>
+    {belongsToPlayer && game.result && <section className="operation-panel" aria-labelledby="match-result-title">
+      <h2 id="match-result-title">{matchResultLabels[game.result]}</h2>
+      <p>Partita {game.code} · {game.matchSize}</p>
+      {game.finishedAt && <p>Conclusa il {formatMatchTime(game.finishedAt.toMillis())}</p>}
+    </section>}
     <Link className="button secondary inline-button" to="/">Torna alla dashboard</Link>
   </section>
   if (expired) return <section className="lobby-page">

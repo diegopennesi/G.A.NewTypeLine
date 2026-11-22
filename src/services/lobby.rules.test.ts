@@ -406,15 +406,18 @@ it('lets a participant finish a completed match and prevents early closure', asy
     playerOneReady: true, playerTwoReady: true,
     activation: { version: 2, round: 20, current: null, lastSeat: 'two', units: [{ ...units[0], time: 20 }, ...units.slice(1)] },
   }))
-  await expect(finishMatch(code, 'pc')).rejects.toThrow('entrambe le fasi')
+  await expect(finishMatch(code, 'pc', 'RED')).rejects.toThrow('entrambe le fasi')
   await assertFails(updateDoc(ref, { status: 'FINISHED', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() }))
   await environment.withSecurityRulesDisabled(admin => updateDoc(doc(admin.firestore(), path), { 'activation.units': units }))
-  await finishMatch(code, 'pc')
-  await finishMatch(code, 'pc')
+  await assertFails(updateDoc(ref, { status: 'FINISHED', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { status: 'FINISHED', result: 'INVALID', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() }))
+  await finishMatch(code, 'pc', 'RED')
+  await finishMatch(code, 'pc', 'BLUE')
   const otherRef = doc(environment.authenticatedContext('phone').firestore(), path)
   const saved = (await getDoc(otherRef)).data()
   expect(saved?.status).toBe('FINISHED')
   expect(saved?.finishedAt.isEqual(saved.updatedAt)).toBe(true)
+  expect(saved?.result).toBe('RED')
 })
 
 it('keeps random draws private, unlocks three more at the second phase and keeps the last three covered', async () => {
