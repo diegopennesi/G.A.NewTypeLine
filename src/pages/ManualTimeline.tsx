@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
-import { initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
+import { activationQueue, initialActivation, nextActivation, roundPhase, roundSlot, type TimelineAction } from '../models/activation'
 import { matchResultLabels, type Game, type MatchResult } from '../models/game'
 import { changeActivation, finishMatch } from '../services/activationService'
 import { drawnTacticsCards, playTacticsCard, type TacticsDeck, revertTacticsCard, watchTacticsPlays, type TacticsPlays } from '../services/tacticsService'
@@ -296,7 +296,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       <summary>Effetti sulla Timeline</summary>
       <label>MS bersaglio <select value={targetKey} onChange={event => setTargetKey(event.target.value)}>
         <option value="">Scegli un MS</option>
-        {state.units.map(unit => <option key={unit.key} value={unit.key}>
+        {activationQueue(state).map(unit => <option key={unit.key} value={unit.key}>
           {label(unit.id)} · {team(unit.seat) === 'RED' ? 'Rosso' : 'Blu'} · Fase {roundPhase(unit.time)}, TL {roundSlot(unit.time)}
         </option>)}
       </select></label>

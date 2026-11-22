@@ -5,9 +5,9 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc, writeBatch } from 'fir
 
 import { createLobby, joinLobby, leaveLobby, moveTimelineUnit, setReady, subscribeToLobby, watchResumableMatches, type ResumableMatch } from './lobbyService'
 import { drawnTacticsCards, type TacticsDeck, playTacticsCard, revertTacticsCard, saveTacticsDeck } from './tacticsService'
-import { changeActivation, finishMatch } from './activationService'
+import { changeActivation, changeVictory, finishMatch } from './activationService'
 import type { Game } from '../models/game'
-import { initialActivation, nextActivation } from '../models/activation'
+import { activationQueue, initialActivation, nextActivation } from '../models/activation'
 import { removePreset, saveAvatar, savePreset } from './accountService'
 import { getFirestoreService } from './firestoreService'
 vi.mock('./firestoreService', () => ({ getFirestoreService: vi.fn() }))
@@ -495,4 +495,38 @@ it('protects personal avatars and presets and can apply a saved squad and deck t
   expect((await getDoc(doc(pc, 'games', code, 'tacticsDecks', 'pc'))).data()?.cards).toEqual(cards)
   await saveAvatar('pc', null)
   expect((await getDoc(profile)).data()?.avatar).toBeNull()
+})
+
+it('orders targets and synchronizes destruction, Garrison and manual VP for both players', async () => {
+  const code = 'VICTORY2'
+  const active = {
+    ...game, code, status: 'ACTIVE', updatedAt: new Date(),
+    playerOneSquad: ['EX01-U02', 'ST01-U001', 'ST01-U003'],
+    playerTwoSquad: ['ST01-U002', 'ST01-U004', 'ST01-U005'],
+  }
+  await environment.withSecurityRulesDisabled(admin => setDoc(doc(admin.firestore(), 'games', code), active))
+  const pc = environment.authenticatedContext('pc').firestore()
+  const phone = environment.authenticatedContext('phone').firestore()
+  const use = (db: typeof pc) => vi.mocked(getFirestoreService).mockReturnValue(db as unknown as ReturnType<typeof getFirestoreService>)
+  const ref = doc(phone, 'games', code)
+  const target = 'one/EX01-U02'
+  use(pc)
+  await changeVictory(code, 'pc', 'subtract')
+  await changeActivation(code, 'pc', 0, { kind: 'start', key: target })
+  const paid = await changeActivation(code, 'pc', 1, { kind: 'pay', delta: 4 })
+  expect(activationQueue(paid).slice(0, 4).map(unit => unit.key)).toEqual([
+    target, 'two/ST01-U004', 'one/ST01-U001', 'one/ST01-U003',
+  ])
+  use(phone)
+  const defeated = await changeActivation(code, 'phone', 2, { kind: 'defeat', key: target })
+  expect(defeated.units.at(-1)).toMatchObject({ key: target, time: 7, reserve: true })
+  await expect(changeActivation(code, 'phone', 3, { kind: 'defeat', key: target })).rejects.toThrow('Effetto non valido')
+  await Promise.all([changeVictory(code, 'phone', 'captured'), changeVictory(code, 'phone', 'rescued')])
+  await changeVictory(code, 'phone', 'add')
+  await changeVictory(code, 'phone', 'subtract')
+  const saved = (await getDoc(doc(pc, 'games', code))).data()?.victory
+  expect(saved.two).toEqual({ destroyed: 5, manual: 0, captured: 1, rescued: 1 })
+  expect(saved.one).toBeUndefined()
+  await assertFails(updateDoc(ref, { 'victory.one.manual': 1, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
+  await assertFails(updateDoc(ref, { 'victory.two.destroyed': 100, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() }))
 })

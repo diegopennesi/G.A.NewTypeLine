@@ -1,3 +1,4 @@
+import { VictoryBoard } from './VictoryBoard'
 import { unitSelectionRows } from '../data/cardSelectionRows'
 import { LobbyPresetPicker } from './LobbyPresetPicker'
 import { CardSelectionList } from '../components/CardSelectionList'
@@ -74,6 +75,7 @@ export function GameLobbyPage() {
     {belongsToPlayer && game.result && <section className="operation-panel" aria-labelledby="match-result-title">
       <h2 id="match-result-title">{matchResultLabels[game.result]}</h2>
       <p>Partita {game.code} · {game.matchSize}</p>
+      {game.victory && <VictoryBoard game={game} playerId={user.uid} readOnly />}
       {game.finishedAt && <p>Conclusa il {formatMatchTime(game.finishedAt.toMillis())}</p>}
     </section>}
     <Link className="button secondary inline-button" to="/">Torna alla dashboard</Link>
@@ -101,7 +103,9 @@ export function GameLobbyPage() {
   return <section className={game.status === 'ACTIVE' ? 'lobby-page lobby-page-active' : 'lobby-page'}>
     {error && <p className="message error" role="alert">{error}</p>}
     <header className="operation-heading">
-    <h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
+    <div className="match-title-row"><h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
+      {game.status === 'ACTIVE' && user && <VictoryBoard game={game} playerId={user.uid} />}
+    </div>
     <div className="match-header">
       <div className="share-code"><span>Codice partita</span><strong>{game.code}</strong></div>
       <div className="player-list" aria-label="Giocatori">
