@@ -25,7 +25,5 @@
 .site-header { background: #18191fe8; border-bottom: 1px solid var(--hangar-border); }
 .site-header .topbar { min-height: 60px; padding-block: .55rem; }
 .site-header .brand { display: inline-flex; align-items: center; gap: .65rem; min-height: 44px; letter-spacing: -.015em; }
-.brand-plate { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; border: 1px solid var(--hangar-accent); border-radius: .2rem; color: var(--hangar-accent); font: 700 .75rem ui-monospace, monospace; }
 .site-header .button { min-height: 44px; }
-.auth-shell .auth-page { min-height: calc(100dvh - 61px); }
 :focus-visible { outline: 2px solid var(--hangar-accent); outline-offset: 3px; }
