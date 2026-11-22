@@ -1,3 +1,4 @@
+import type { Victory } from './victory'
 import type { Timestamp } from 'firebase/firestore'
 import type { Activation } from './activation'
 
@@ -12,4 +13,4 @@ export const matchResultLabels: Record<MatchResult, string> = {
   DRAW: 'Pareggio',
   INTERRUPTED: 'Partita interrotta',
 }
-export interface Game { id: string; code: string; matchSize: MatchSize; status: GameStatus; ownerId: string; playerOneId: string; playerOneName: string; playerTwoId: string | null; playerTwoName: string | null; playerOneTeam: Team | null; playerTwoTeam: Team | null; playerOneSquad: string[]; playerTwoSquad: string[]; playerOneReady: boolean; playerTwoReady: boolean; playerOneTimeline?: Record<string, number>; playerTwoTimeline?: Record<string, number>; createdAt: Timestamp; updatedAt: Timestamp | null; lastActionAt?: Timestamp | null; finishedAt?: Timestamp; result?: MatchResult; activation?: Activation }
+export interface Game { id: string; code: string; matchSize: MatchSize; status: GameStatus; ownerId: string; playerOneId: string; playerOneName: string; playerTwoId: string | null; playerTwoName: string | null; playerOneTeam: Team | null; playerTwoTeam: Team | null; playerOneSquad: string[]; playerTwoSquad: string[]; playerOneReady: boolean; playerTwoReady: boolean; playerOneTimeline?: Record<string, number>; playerTwoTimeline?: Record<string, number>; createdAt: Timestamp; updatedAt: Timestamp | null; lastActionAt?: Timestamp | null; finishedAt?: Timestamp; result?: MatchResult; victory?: Victory; activation?: Activation }

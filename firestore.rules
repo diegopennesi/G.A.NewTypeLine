@@ -106,10 +106,53 @@ service cloud.firestore {
    // A deck is readable only by its owner. The separate plays document contains revealed cards.
    function gamePath() { return /databases/$(database)/documents/games/$(code); }
    function currentGame() { return get(gamePath()).data; }
+   function victory(d) { return d.get('victory', {}); }
+   function victoryScore(d, seat) { return victory(d).get(seat, {}); }
+   function unitVP(id) {
+    return {
+     'ST01-U001': 8, 'ST01-U002': 9, 'ST01-U003': 10, 'ST01-U004': 7, 'ST01-U005': 9, 'ST01-U006': 7,
+     'EX01-U01': 10, 'EX01-U02': 5, 'EX01-U03': 7,
+     'EX02-U01': 10, 'EX02-U02': 7, 'EX02-U03': 8,
+     'PA01-U01': 10, 'PA01-U02': 7, 'PA01-U03': 7
+    }.get(id, 0);
+   }
+   function awardsDefeat(before, next) {
+    let removed = before.units.removeAll(next.units);
+    let target = removed[0];
+    let moved = next.units[next.units.size() - 1];
+    let seat = target.seat == 'one' ? 'two' : 'one';
+    let old = victory(resource.data);
+    let updated = victory(request.resource.data);
+    let score = old.get(seat, {});
+    let newScore = updated.get(seat, {});
+    return removed.size() == 1 && target.reserve == false && moved.reserve == true &&
+     moved.time == target.time + 2 && moved.diff(target).affectedKeys().hasOnly(['reserve','time']) &&
+     next.units == before.units.removeAll([target]).concat([moved]) &&
+     updated.diff(old).affectedKeys().hasOnly([seat]) &&
+     newScore.diff(score).affectedKeys().hasOnly(['destroyed']) &&
+     newScore.get('destroyed', 0) == score.get('destroyed', 0) + unitVP(target.id);
+   }
+   function writesVictory() {
+    let seat = request.auth.uid == resource.data.playerOneId ? 'one' : 'two';
+    let before = victoryScore(resource.data, seat);
+    let after = victoryScore(request.resource.data, seat);
+    let changed = after.diff(before).affectedKeys();
+    let manual = after.get('manual', 0);
+    let captured = after.get('captured', 0);
+    let rescued = after.get('rescued', 0);
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['victory','updatedAt','lastActionAt']) &&
+     victory(request.resource.data).diff(victory(resource.data)).affectedKeys().hasOnly([seat]) &&
+     manual is int && captured is int && rescued is int &&
+     manual + after.get('destroyed', 0) + 2 * (captured + rescued) >= 0 &&
+     ((changed.hasOnly(['manual']) && manual in [before.get('manual', 0) - 1, before.get('manual', 0) + 1]) ||
+      (changed.hasOnly(['captured']) && captured == before.get('captured', 0) + 1) ||
+      (changed.hasOnly(['rescued']) && rescued == before.get('rescued', 0) + 1));
+   }
    function writesActivation() {
     let before = resource.data.get('activation', {'version': 0});
     let next = request.resource.data.activation;
-    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt']) &&
+    return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activation','updatedAt','lastActionAt','victory']) &&
+     (next.lastKind == 'defeat' ? awardsDefeat(before, next) : victory(resource.data) == victory(request.resource.data)) &&
      next.keys().hasOnly(['version','units','round','lastSeat','current','lastKind','reaction','phaseTwoSeats']) &&
      next.version is int && next.version == before.version + 1 &&
      next.units is list && next.units.size() == resource.data.playerOneSquad.size() + resource.data.playerTwoSquad.size() &&
@@ -289,6 +332,9 @@ service cloud.firestore {
    allow create: if signed() && valid(request.resource.data) && request.resource.data.code == code &&
     request.resource.data.ownerId == request.auth.uid && request.resource.data.status == 'WAITING' &&
     request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+   allow update: if signed() && participant(resource.data) && activeWithinDeadline(resource.data) &&
+    request.resource.data.updatedAt == request.time && request.resource.data.lastActionAt == request.time &&
+    'victory' in request.resource.data.diff(resource.data).affectedKeys() && writesVictory();
    allow update: if signed() && activeWithinDeadline(resource.data) && request.resource.data.updatedAt == request.time &&
     request.resource.data.lastActionAt == request.time && (
     (participant(resource.data) && ('activation' in request.resource.data.diff(resource.data).affectedKeys()

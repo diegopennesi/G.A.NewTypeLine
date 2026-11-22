@@ -53,6 +53,27 @@ export function nextActivation(state: Activation) {
   return { time, tie, unit: tie ? undefined : one && two ? (state.lastSeat === 'one' ? two : one) : one ?? two }
 }
 
+export function activationQueue(state: Activation) {
+  let remaining = [...state.units]
+  let lastSeat = state.lastSeat
+  const current = remaining.find(unit => unit.key === state.current?.key)
+  const queue: TimelineUnit[] = []
+  if (current) {
+    queue.push(current)
+    remaining = remaining.filter(unit => unit.key !== current.key)
+    lastSeat = current.seat
+  }
+  while (remaining.length) {
+    const next = nextActivation({ ...state, units: remaining, lastSeat })
+    // Before initiative, display tied units in their existing stack order.
+    const unit = next.unit ?? remaining.find(candidate => candidate.time === next.time)!
+    queue.push(unit)
+    remaining = remaining.filter(candidate => candidate.key !== unit.key)
+    lastSeat = unit.seat
+  }
+  return queue
+}
+
 export function applyTimelineAction(state: Activation, seat: Seat, action: TimelineAction): Activation {
   const next = nextActivation(state)
   const current = state.units.find(unit => unit.key === state.current?.key)

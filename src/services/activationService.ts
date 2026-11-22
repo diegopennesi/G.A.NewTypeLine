@@ -1,4 +1,6 @@
-import { doc, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { findUnitCard } from '../data/unitCards'
+import { scoreFor, victoryTotal, type VictoryAction } from '../models/victory'
+import { doc, increment, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { applyTimelineAction, initialActivation, reachedSecondPhase, type TimelineAction } from '../models/activation'
 import type { Game, MatchResult } from '../models/game'
 import { getFirestoreService } from './firestoreService'
@@ -16,8 +18,30 @@ export async function changeActivation(code: string, uid: string, version: numbe
     const activation = applyTimelineAction(state, game.playerOneId === uid ? 'one' : 'two', action)
     const phaseTwoSeats = (['one', 'two'] as const).filter(seat => reachedSecondPhase(activation, seat))
     if (phaseTwoSeats.length > 0) activation.phaseTwoSeats = phaseTwoSeats
-    transaction.update(ref, { activation, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
+    const target = action.kind === 'defeat' ? state.units.find(unit => unit.key === action.key) : undefined
+    const opponent = target?.seat === 'one' ? 'two' : 'one'
+    const award = target ? findUnitCard(target.id)?.stats?.vp ?? 0 : 0
+    const points = award ? { [`victory.${opponent}.destroyed`]: increment(award) } : {}
+    transaction.update(ref, { activation, ...points, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
     return activation
+  })
+}
+
+export async function changeVictory(code: string, uid: string, action: VictoryAction) {
+  const db = getFirestoreService()
+  const ref = doc(db, 'games', code)
+  await runTransaction(db, async transaction => {
+    const game = (await transaction.get(ref)).data() as Game | undefined
+    if (game?.status !== 'ACTIVE' || ![game.playerOneId, game.playerTwoId].includes(uid)) {
+      throw new Error('Partita non disponibile.')
+    }
+    const seat = game.playerOneId === uid ? 'one' : 'two'
+    if (action === 'subtract' && victoryTotal(scoreFor(game.victory, seat)) === 0) return
+    const field = action === 'captured' || action === 'rescued' ? action : 'manual'
+    transaction.update(ref, {
+      [`victory.${seat}.${field}`]: increment(action === 'subtract' ? -1 : 1),
+      updatedAt: serverTimestamp(), lastActionAt: serverTimestamp(),
+    })
   })
 }
 
