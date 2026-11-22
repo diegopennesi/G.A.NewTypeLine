@@ -16,15 +16,7 @@ export function LoginShowcase() {
 
   return <div className="login-showcase" aria-roledescription="carosello" aria-label="Azioni di gioco">
       <figure key={scene.kind} className={`showcase-scene showcase-${scene.kind}`} aria-live="polite" aria-atomic="true">
-        {scene.kind === 'hangar' && <div className="showcase-illustration showcase-hangar-art" aria-hidden="true" />}
-        {scene.kind === 'timeline' && <div className="showcase-illustration showcase-track" aria-hidden="true">
-          <div className="showcase-track-line">
-            <span>02<i /></span><span>03<i /></span><span>04<i /></span><span>05<i /></span>
-          </div>
-        </div>}
-        {scene.kind === 'reaction' && <div className="showcase-illustration showcase-signal" aria-hidden="true">
-          <span>Prima del tiro</span><div><b>Response</b><span>Passa</span></div>
-        </div>}
+        <div className={`showcase-illustration showcase-art-${scene.kind}`} aria-hidden="true" />
         <figcaption>
           <strong>{scene.title}</strong>
           <span>{scene.description}</span>

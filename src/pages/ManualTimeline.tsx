@@ -183,7 +183,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
 
   return <section className="manual-timeline" aria-labelledby="manual-timeline-title">
     <h2 id="manual-timeline-title">Timeline</h2>
-    <div className="timeline-instructions">
+    <div className="timeline-instructions turn-strip" data-turn={current ? ownTurn ? 'own' : 'opponent' : undefined}>
       <p aria-live="polite">{saving ? 'Salvataggio…' : completed ? 'Fasi concluse.' : current
         ? `In attivazione: ${label(activeUnit?.id)} · Fase ${roundPhase(round)}, TL ${roundSlot(round)}`
         : next.tie ? `Spareggio a TL ${roundSlot(round)}`
