@@ -1,3 +1,4 @@
+import { tacticsDeckSize } from '../data/tacticsCards'
 import { findUnitCard } from '../data/unitCards'
 import { collection, doc, onSnapshot, or, query, where, runTransaction, serverTimestamp, writeBatch, type Unsubscribe } from 'firebase/firestore'
 import type { Game } from '../models/game'
@@ -39,6 +40,10 @@ export async function setReady(code: string, playerId: string, playerOne: boolea
       throw new Error('Squadra non valida.')
     }
     if (playerOne ? game.playerOneReady : game.playerTwoReady) return
+    const deck = (await transaction.get(doc(ref, 'tacticsDecks', playerId))).data()
+    if (deck?.cards?.length === tacticsDeckSize) {
+      transaction.set(doc(db, 'accounts', playerId, 'matchDecks', ref.id), { cards: deck.cards })
+    }
     transaction.update(ref, {
       ...(playerOne ? { playerOneReady: true, playerOneSquad: squad } : { playerTwoReady: true, playerTwoSquad: squad }),
       updatedAt: serverTimestamp(),
