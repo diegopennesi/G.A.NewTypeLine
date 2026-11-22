@@ -1,3 +1,4 @@
+import { UnitPortrait } from '../components/UnitPortrait'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
@@ -169,7 +170,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </div>}
     {slotUnits.map(unit => {
       const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
-      const text = <>{label(unit.id)}{unit.reserve && <small>Riserva</small>}</>
+      const text = <><UnitPortrait unitId={unit.id} /><span className="timeline-unit-label">{label(unit.id)}{unit.reserve && <small>Riserva</small>}</span></>
       if (canPay && unit.key === current?.key) {
         return <span className={`${className} timeline-drag-unit`} key={unit.key}
           onPointerDown={startDrag} onPointerMove={moveDrag}
@@ -195,6 +196,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     <h2 id="manual-timeline-title">Timeline</h2>
     <div className="timeline-instructions timeline-hud" data-team={turnTeam}>
       <div className="timeline-hud-readout" aria-live="polite">
+        {!completed && turnUnit && <UnitPortrait unitId={turnUnit.id} />}
         <div className="timeline-hud-unit">
           <span className="timeline-hud-status"><i aria-hidden="true" />{turnStatus}</span>
           {turnUnit && !completed && <strong>{label(turnUnit.id)}</strong>}

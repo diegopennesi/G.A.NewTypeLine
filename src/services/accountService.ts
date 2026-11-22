@@ -34,3 +34,12 @@ export function watchAvatar(uid: string, onAvatar: (avatar: AvatarId | null) => 
 export async function saveAvatar(uid: string, avatar: AvatarId | null) {
   await setDoc(doc(getFirestoreService(), 'accounts', uid), { avatar })
 }
+
+export function watchLobbyAvatar(code: string, uid: string, onAvatar: (avatar: AvatarId | null) => void) {
+  return onSnapshot(doc(getFirestoreService(), 'games', code, 'playerAvatars', uid),
+    snapshot => onAvatar(findAvatar(snapshot.data()?.avatar)?.id ?? null), () => onAvatar(null))
+}
+
+export async function shareLobbyAvatar(code: string, uid: string, avatar: AvatarId | null) {
+  await setDoc(doc(getFirestoreService(), 'games', code, 'playerAvatars', uid), { avatar })
+}

@@ -487,6 +487,13 @@ it('protects personal avatars and presets and can apply a saved squad and deck t
   const savedDeck = (await getDoc(doc(profile, 'presets', 'test-deck'))).data()?.cards
   vi.mocked(getFirestoreService).mockReturnValue(phone as unknown as ReturnType<typeof getFirestoreService>)
   await joinLobby(code, 'phone', 'Phone')
+  const sharedAvatar = doc(phone, 'games', code, 'playerAvatars', 'phone')
+  await assertSucceeds(setDoc(sharedAvatar, { avatar: 'robot-female' }))
+  await assertFails(setDoc(sharedAvatar, { avatar: 'https://example.com/avatar.png' }))
+  await assertFails(setDoc(doc(phone, 'games', code, 'playerAvatars', 'pc'), { avatar: 'robot-female' }))
+  expect((await getDoc(doc(pc, 'games', code, 'playerAvatars', 'phone'))).data()?.avatar).toBe('robot-female')
+  const stranger = environment.authenticatedContext('stranger').firestore()
+  await assertFails(getDoc(doc(stranger, 'games', code, 'playerAvatars', 'phone')))
   vi.mocked(getFirestoreService).mockReturnValue(pc as unknown as ReturnType<typeof getFirestoreService>)
   await saveTacticsDeck(code, 'pc', savedDeck)
   await setReady(code, 'pc', true, savedSquad)
