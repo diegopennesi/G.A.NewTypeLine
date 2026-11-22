@@ -82,7 +82,7 @@ export function GameLobbyPage() {
 
   return <section className={game.status === 'ACTIVE' ? 'lobby-page lobby-page-active' : 'lobby-page'}>
     {error && <p className="message error" role="alert">{error}</p>}
-    <p className="eyebrow">Lobby partita</p>
+    <header className="operation-heading">
     <h1>{waitingForPlayer ? 'In attesa del Giocatore 2' : game.status === 'ACTIVE' ? 'Partita avviata' : 'Preparate le vostre squadre'}</h1>
     <div className="match-header">
       <div className="share-code"><span>Codice partita</span><strong>{game.code}</strong></div>
@@ -97,11 +97,13 @@ export function GameLobbyPage() {
         </button>)}
       </div>}
     </div>
+    </header>
     {waitingForPlayer ? <p className="lead">Condividi il codice o fai scansionare il QR. La lobby si aggiornerà automaticamente quando l’altro giocatore entrerà.</p> : game.status !== 'ACTIVE' && <p className="lead">Formato {game.matchSize}. I colori sono assegnati casualmente. Scegli le unità e conferma la tua squadra.</p>}
     {isPlayerOne && waitingForPlayer && <section className="invite-card" aria-labelledby="invite-title">
       <div><h2 id="invite-title">Invita il Giocatore 2</h2><p>Può scansionare questo QR dal cellulare oppure aprire il link condivisibile.</p><a className="invite-link" href={inviteUrl}>{inviteUrl}</a></div>
       <div className="qr-code"><QRCodeSVG value={inviteUrl} size={176} level="M" includeMargin title={`QR per entrare nella partita ${game.code}`} /></div>
     </section>}
+    {game.status !== 'ACTIVE' && <div className="lobby-preparation">
     {game.status === 'SETUP' && <section className="squad-picker">
       <h2>Componi la tua squadra · {selection.length}/{squadSize}</h2>
       <CardSelectionList label="Cerca Unit Card"
@@ -115,6 +117,7 @@ export function GameLobbyPage() {
           ? current.filter(cardId => cardId !== id) : current.length < squadSize ? [...current, id] : current)} />
     </section>}
     {(waitingForPlayer || game.status === 'SETUP') && user && deck && <TacticsDeckPicker key={deckKey} code={game.code} playerId={user.uid} deck={deck} locked={myReady || ready} />}
+    </div>}
     {!waitingForPlayer && game.status !== 'ACTIVE' && <button className="button" disabled={ready || (!myReady && deck?.cards.length !== tacticsDeckSize) || (myReady && !game.playerOneReady) || (myReady && !game.playerTwoReady) || selection.length !== squadSize} onClick={() => { if (!user) return; setError(null); setReadyState(true); void setReady(game.code, user.uid, isPlayerOne, selection).then(() => setReadyState(false)).catch((reason) => { setReadyState(false); setError(reason instanceof Error ? reason.message : 'Impossibile confermare.') }) }}>{ready ? 'Conferma…' : myReady ? (game.playerOneReady && game.playerTwoReady ? 'Avvia partita' : 'Pronto · in attesa') : selection.length !== squadSize ? `Scegli ${squadSize} Unit Card` : deck?.cards.length !== tacticsDeckSize ? 'Salva il mazzo tattico' : 'Sono pronto'}</button>}
     {game.status === 'ACTIVE' && user && <ManualTimeline key={game.code} game={game} playerId={user.uid} deck={deck ?? { cards: [], randomized: false }} phase={phase} />}
     {game.status !== 'ACTIVE' && <button className="button secondary" disabled={leaving} onClick={() => { if (!user) return; setLeaving(true); void leaveLobby(game.code, user.uid).then(() => navigate('/', { replace: true })).catch(() => { setLeaving(false); setError('Impossibile uscire dalla lobby.') }) }}>{leaving ? 'Uscita…' : 'Esci dalla partita'}</button>}
