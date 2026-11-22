@@ -177,3 +177,33 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 @media (max-width: 640px) {
   .match-header > .victory-board { flex-basis: 100%; grid-column: 1 / -1; }
 }
+
+.timeline-hud {
+  --turn-accent: var(--hangar-accent);
+  padding: .65rem .9rem;
+  border-left: .25rem solid var(--turn-accent);
+  background: linear-gradient(105deg, color-mix(in srgb, var(--turn-accent) 17%, transparent), transparent 70%);
+}
+.timeline-hud[data-team="BLUE"], .defeat-log [data-team="BLUE"] { --turn-accent: #88b2ff; }
+.timeline-hud[data-team="RED"], .defeat-log [data-team="RED"] { --turn-accent: #ffa393; }
+.timeline-hud-readout { display: flex; align-items: center; flex: 1 1 15rem; flex-wrap: wrap; justify-content: space-between; gap: .55rem 1rem; }
+.timeline-hud-unit { display: grid; gap: .2rem; min-width: 0; overflow-wrap: anywhere; }
+.timeline-hud-unit > strong { color: var(--hangar-text); font-size: clamp(1.05rem, 2.4vw, 1.45rem); line-height: 1.15; }
+.timeline-hud-unit > span { font-size: .75rem; }
+.timeline-hud-status { display: flex; align-items: center; gap: .45rem; color: var(--turn-accent); text-transform: uppercase; letter-spacing: .09em; font-weight: 700; }
+.timeline-hud-status i { width: .45rem; height: .45rem; background: currentColor; transform: rotate(45deg); }
+.timeline-hud-position { display: flex; gap: .3rem; align-items: center; font-size: .72rem; text-transform: uppercase; }
+.timeline-hud-position > span { background: var(--hangar-deck); padding: .3rem .5rem; border-radius: .25rem; white-space: nowrap; }
+.timeline-hud-position b { font-size: 1.05rem; color: var(--turn-accent); font-variant-numeric: tabular-nums; }
+.timeline-hud button { border-color: var(--turn-accent); }
+.defeat-log { padding: .15rem .75rem; border: 1px solid var(--hangar-border); border-radius: .5rem; background: var(--hangar-panel); }
+.defeat-log summary { cursor: pointer; padding-block: .55rem; font-weight: 700; }
+.defeat-log summary span, .defeat-log h3 small { margin-left: .35rem; color: var(--hangar-muted); font-variant-numeric: tabular-nums; }
+.defeat-log-teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .75rem; padding-block: .35rem .65rem; }
+.defeat-log-teams section { min-width: 0; }
+.defeat-log h3 { margin: 0; color: var(--turn-accent, var(--hangar-text)); font-size: .9rem; }
+.defeat-log p { margin: .4rem 0; color: var(--hangar-muted); font-size: .82rem; }
+.defeat-log ul { list-style: none; padding: 0; margin: .3rem 0 0; }
+.defeat-log li { display: flex; justify-content: space-between; gap: .4rem; padding-block: .35rem; border-top: 1px solid var(--hangar-border); overflow-wrap: anywhere; }
+.defeat-log li small { display: block; color: var(--hangar-muted); }
+.defeat-log li strong { white-space: nowrap; color: var(--turn-accent, var(--hangar-text)); }

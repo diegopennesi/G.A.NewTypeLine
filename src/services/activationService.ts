@@ -1,6 +1,6 @@
 import { findUnitCard } from '../data/unitCards'
 import { scoreFor, victoryTotal, type VictoryAction } from '../models/victory'
-import { doc, increment, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { arrayUnion, doc, increment, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { applyTimelineAction, initialActivation, reachedSecondPhase, type TimelineAction } from '../models/activation'
 import type { Game, MatchResult } from '../models/game'
 import { getFirestoreService } from './firestoreService'
@@ -22,7 +22,8 @@ export async function changeActivation(code: string, uid: string, version: numbe
     const opponent = target?.seat === 'one' ? 'two' : 'one'
     const award = target ? findUnitCard(target.id)?.stats?.vp ?? 0 : 0
     const points = award ? { [`victory.${opponent}.destroyed`]: increment(award) } : {}
-    transaction.update(ref, { activation, ...points, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
+    const log = target ? { defeats: arrayUnion({ version: activation.version, unitId: target.id, creditedTo: opponent, vp: award }) } : {}
+    transaction.update(ref, { activation, ...points, ...log, updatedAt: serverTimestamp(), lastActionAt: serverTimestamp() })
     return activation
   })
 }

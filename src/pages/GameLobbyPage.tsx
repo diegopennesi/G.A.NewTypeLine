@@ -1,3 +1,4 @@
+import { DefeatLog } from './DefeatLog'
 import { VictoryBoard } from './VictoryBoard'
 import { unitSelectionRows } from '../data/cardSelectionRows'
 import { LobbyPresetPicker } from './LobbyPresetPicker'
@@ -75,6 +76,7 @@ export function GameLobbyPage() {
     {belongsToPlayer && game.result && <section className="operation-panel" aria-labelledby="match-result-title">
       <h2 id="match-result-title">{matchResultLabels[game.result]}</h2>
       <p>Partita {game.code} · {game.matchSize}</p>
+      <DefeatLog game={game} />
       {game.victory && <VictoryBoard game={game} playerId={user.uid} readOnly />}
       {game.finishedAt && <p>Conclusa il {formatMatchTime(game.finishedAt.toMillis())}</p>}
     </section>}
@@ -119,6 +121,7 @@ export function GameLobbyPage() {
       {activation && user && <VictoryBoard game={game} playerId={user.uid} />}
     </div>
     </header>
+    {activation && <DefeatLog game={game} />}
     {waitingForPlayer ? <p className="lead">Condividi il codice o fai scansionare il QR. La lobby si aggiornerà automaticamente quando l’altro giocatore entrerà.</p> : game.status !== 'ACTIVE' && <p className="lead">Formato {game.matchSize}. I colori sono assegnati casualmente. Scegli le unità e conferma la tua squadra.</p>}
     {isPlayerOne && waitingForPlayer && <section className="invite-card" aria-labelledby="invite-title">
       <div><h2 id="invite-title">Invita il Giocatore 2</h2><p>Può scansionare questo QR dal cellulare oppure aprire il link condivisibile.</p><a className="invite-link" href={inviteUrl}>{inviteUrl}</a></div>
