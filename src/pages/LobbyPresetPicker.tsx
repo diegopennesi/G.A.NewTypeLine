@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { watchPresets, type Preset } from '../services/accountService'
 
 export function LobbyPresetPicker({ code, playerId, size, busy, onUse }: {
-  code: string; playerId: string; size: number; busy: boolean; onUse: (squad: string[], deck: string[]) => void
+  code: string; playerId: string; size: number; busy: boolean; onUse: (squad: Preset, deck: Preset) => void
 }) {
   const [presets, setPresets] = useState<Preset[] | null>(null)
   const [error, setError] = useState(false)
@@ -31,7 +31,7 @@ export function LobbyPresetPicker({ code, playerId, size, busy, onUse }: {
           </select></label>
         </div>
         <button type="button" className="button secondary" disabled={busy || !squad || !deck}
-          onClick={() => { if (squad && deck) onUse(squad.cards, deck.cards) }}>Usa squadra e mazzo</button>
+          onClick={() => { if (squad && deck) onUse(squad, deck) }}>Usa squadra e mazzo</button>
       </>}
     <Link className="button secondary" to="/account" state={{ backTo: `/games/${code}` }}>Crea o modifica preset</Link>
   </div>

@@ -26,7 +26,7 @@ export async function createLobby(ownerId: string, ownerName: string, matchSize:
 }
 
 export async function joinLobby(code: string, playerId: string, playerName: string) { const gameCode = normalize(code); await runTransaction(getFirestoreService(), async (transaction) => { const snapshot = await transaction.get(reference(gameCode)); if (!snapshot.exists()) throw new Error('Partita non trovata. Verifica il codice condiviso.'); const game = snapshot.data(); if (game.status === 'FINISHED') throw new Error('Partita chiusa.'); const { expiresAt } = matchActivity(game as Game); if (expiresAt !== null && Date.now() >= expiresAt) throw new Error('Partita scaduta per inattività.'); if (game.playerOneId === playerId || game.playerTwoId === playerId) return; if (game.status !== 'WAITING' || game.playerTwoId !== null) throw new Error('Questa partita ha già due giocatori.'); const playerOneTeam = Math.random() < .5 ? 'RED' : 'BLUE'; transaction.update(reference(gameCode), { playerTwoId: playerId, playerTwoName: playerName, playerOneTeam, playerTwoTeam: playerOneTeam === 'RED' ? 'BLUE' : 'RED', status: 'SETUP', updatedAt: serverTimestamp() }) }); return gameCode }
-export async function setReady(code: string, playerId: string, playerOne: boolean, squad: string[]) {
+export async function setReady(code: string, playerId: string, playerOne: boolean, squad: string[], presetIds?: { squad: string; deck: string }) {
   const db = getFirestoreService()
   const ref = doc(db, 'games', normalize(code))
   await runTransaction(db, async transaction => {
@@ -42,7 +42,17 @@ export async function setReady(code: string, playerId: string, playerOne: boolea
     if (playerOne ? game.playerOneReady : game.playerTwoReady) return
     const deck = (await transaction.get(doc(ref, 'tacticsDecks', playerId))).data()
     if (deck?.cards?.length === tacticsDeckSize) {
-      transaction.set(doc(db, 'accounts', playerId, 'matchDecks', ref.id), { cards: deck.cards })
+      const presets = presetIds ? await Promise.all([presetIds.squad, presetIds.deck].map(id =>
+        transaction.get(doc(db, 'accounts', playerId, 'presets', id)))) : []
+      const matches = (index: number, kind: string, cards: string[]) => {
+        const preset = presets[index]?.data()
+        return preset?.kind === kind && preset.cards.length === cards.length && cards.every(id => preset.cards.includes(id))
+          ? { id: presets[index].id, name: preset.name } : null
+      }
+      transaction.set(doc(db, 'accounts', playerId, 'matchDecks', ref.id), {
+        cards: deck.cards, squad,
+        squadPreset: matches(0, 'squad', squad), deckPreset: matches(1, 'deck', deck.cards),
+      })
     }
     transaction.update(ref, {
       ...(playerOne ? { playerOneReady: true, playerOneSquad: squad } : { playerTwoReady: true, playerTwoSquad: squad }),

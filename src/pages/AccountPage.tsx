@@ -89,9 +89,13 @@ export function AccountPage() {
     {error && <p className="message error" role="alert">{error}</p>}
     <div className="account-lists">
       {(['squad', 'deck'] as const).map(kind => <section className="operation-panel" key={kind}>
-        <h2>{kind === 'squad' ? 'Squadre salvate' : 'Mazzi salvati'}</h2>
-        <button type="button" className="button secondary" disabled={busy}
-          onClick={() => edit(draftPreset(kind))}>{kind === 'squad' ? 'Nuova squadra' : 'Nuovo mazzo'}</button>
+        <div className="account-list-heading">
+          <h2>{kind === 'squad' ? 'Squadre salvate' : 'Mazzi salvati'}</h2>
+          <button type="button" className="button account-add-button" disabled={busy}
+            aria-label={kind === 'squad' ? 'Nuova squadra' : 'Nuovo mazzo'}
+            title={kind === 'squad' ? 'Nuova squadra' : 'Nuovo mazzo'}
+            onClick={() => edit(draftPreset(kind))}>+</button>
+        </div>
         <ul className="account-preset-list">
           {presets.filter(item => item.kind === kind).map(item => <li key={item.id}>
             <div><strong>{item.name}</strong><small>{item.cards.length} carte</small></div>

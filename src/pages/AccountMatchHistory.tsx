@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { allTacticsCards } from '../data/tacticsCards'
 import type { Preset } from '../services/accountService'
 import { deckKey, loadMatchHistory, type MatchHistoryEntry } from '../services/matchHistoryService'
 
@@ -29,14 +28,13 @@ export function AccountMatchHistory({ uid, presets }: { uid: string; presets: Pr
     groups.set(key, group)
   }
 
-  function nameFor(cards: string[]) {
+  function savedNames(kind: Preset['kind'], cards: string[]) {
     const key = deckKey(cards)
-    const names = presets.filter(item => item.kind === 'deck' && deckKey(item.cards) === key).map(item => item.name)
-    return names.length ? names.join(' / ') : 'Mazzo non salvato o versione precedente'
+    return presets.filter(item => item.kind === kind && deckKey(item.cards) === key).map(item => item.name)
   }
 
-  function cardList(cards: string[]) {
-    return cards.map(id => allTacticsCards.find(card => card.id === id)?.name ?? id).join(' · ')
+  function squadName(match: MatchHistoryEntry) {
+    return match.squadName ?? (match.squad ? savedNames('squad', match.squad).join(' / ') || 'Squadra senza nome' : 'Squadra non disponibile')
   }
 
   return <section className="operation-panel account-match-history" aria-labelledby="account-history-title">
@@ -47,19 +45,22 @@ export function AccountMatchHistory({ uid, presets }: { uid: string; presets: Pr
       {[...groups].map(([key, group]) => {
         const count = (outcome: MatchHistoryEntry['outcome']) => group.matches.filter(match => match.outcome === outcome).length
         const completed = group.matches.length - count('interrupted')
+        const names = [...new Set([...savedNames('deck', group.cards), ...group.matches.flatMap(match => match.deckName ?? [])])]
+        const squads = [...new Set(group.matches.map(squadName))]
         return <details key={key} className="account-history-row">
-          <summary><strong>{nameFor(group.cards)}</strong> · {completed} concluse
+          <summary><strong>{names.join(' / ') || 'Mazzo senza nome'}</strong> · {completed} concluse
             {completed > 0 && <> · {Math.round(count('win') / completed * 100)}% vittorie</>}</summary>
           <p>{count('win')} vinte · {count('loss')} perse · {count('draw')} pareggiate · {count('interrupted')} interrotte</p>
-          <small>{cardList(group.cards)}</small>
+          {squads.length > 0 && <p>Squadre usate · {squads.join(', ')}</p>}
         </details>
       })}
       <h3>Partite</h3>
       {matches.length === 0 && <p>Nessun risultato registrato.</p>}
       {matches.map(match => <details key={match.code} className="account-history-row">
         <summary><strong>{outcomeLabels[match.outcome]}</strong> · {match.size} · {match.opponent ?? 'Avversario'} · {date.format(match.finishedAt)}</summary>
-        <p>Partita {match.code} · {match.cards ? nameFor(match.cards) : 'Mazzo non disponibile'}</p>
-        {match.cards && <small>{cardList(match.cards)}</small>}
+        <p>Partita {match.code}</p>
+        <p>Squadra · {squadName(match)}</p>
+        <p>Mazzo tattico · {match.deckName ?? (match.cards ? savedNames('deck', match.cards).join(' / ') || 'Mazzo senza nome' : 'Mazzo non disponibile')}</p>
       </details>)}
     </>}
   </section>

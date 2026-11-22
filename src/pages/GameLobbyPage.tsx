@@ -32,6 +32,7 @@ export function GameLobbyPage() {
   const [error, setError] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [ready, setReadyState] = useState(false)
+  const [presetIds, setPresetIds] = useState<{ squad: string; deck: string }>()
   const [selection, setSelection] = useState<string[]>([])
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function GameLobbyPage() {
       }
       if (previousStatus === 'SETUP' && next.status === 'WAITING') {
         setSelection([])
+        setPresetIds(undefined)
         setPresetNotice('')
         setReadyState(false)
       }
@@ -137,8 +139,8 @@ export function GameLobbyPage() {
           setError(null)
           setReadyState(true)
           setPresetNotice('')
-          void saveTacticsDeck(game.code, user.uid, savedCards, deck?.randomized)
-            .then(() => { setSelection(squad); setAppliedPreset(value => value + 1); setPresetNotice('Squadra e mazzo applicati.') })
+          void saveTacticsDeck(game.code, user.uid, savedCards.cards, deck?.randomized)
+            .then(() => { setSelection(squad.cards); setPresetIds({ squad: squad.id, deck: savedCards.id }); setAppliedPreset(value => value + 1); setPresetNotice('Squadra e mazzo applicati.') })
             .catch(() => setError('Impossibile applicare il preset. Riprova.'))
             .finally(() => setReadyState(false))
         }} />}
@@ -155,7 +157,7 @@ export function GameLobbyPage() {
     </section>
     {(waitingForPlayer || game.status === 'SETUP') && user && deck && <TacticsDeckPicker key={`${deckKey}/${appliedPreset}`} code={game.code} playerId={user.uid} deck={deck} locked={myReady || ready} />}
     </div>}
-    {!waitingForPlayer && game.status !== 'ACTIVE' && <button className="button" disabled={ready || (!myReady && deck?.cards.length !== tacticsDeckSize) || (myReady && !game.playerOneReady) || (myReady && !game.playerTwoReady) || selection.length !== squadSize} onClick={() => { if (!user) return; setError(null); setReadyState(true); void setReady(game.code, user.uid, isPlayerOne, selection).then(() => setReadyState(false)).catch((reason) => { setReadyState(false); setError(reason instanceof Error ? reason.message : 'Impossibile confermare.') }) }}>{ready ? 'Conferma…' : myReady ? (game.playerOneReady && game.playerTwoReady ? 'Avvia partita' : 'Pronto · in attesa') : selection.length !== squadSize ? `Scegli ${squadSize} Unit Card` : deck?.cards.length !== tacticsDeckSize ? 'Salva il mazzo tattico' : 'Sono pronto'}</button>}
+    {!waitingForPlayer && game.status !== 'ACTIVE' && <button className="button" disabled={ready || (!myReady && deck?.cards.length !== tacticsDeckSize) || (myReady && !game.playerOneReady) || (myReady && !game.playerTwoReady) || selection.length !== squadSize} onClick={() => { if (!user) return; setError(null); setReadyState(true); void setReady(game.code, user.uid, isPlayerOne, selection, presetIds).then(() => setReadyState(false)).catch((reason) => { setReadyState(false); setError(reason instanceof Error ? reason.message : 'Impossibile confermare.') }) }}>{ready ? 'Conferma…' : myReady ? (game.playerOneReady && game.playerTwoReady ? 'Avvia partita' : 'Pronto · in attesa') : selection.length !== squadSize ? `Scegli ${squadSize} Unit Card` : deck?.cards.length !== tacticsDeckSize ? 'Salva il mazzo tattico' : 'Sono pronto'}</button>}
     {game.status === 'ACTIVE' && user && <ManualTimeline key={game.code} game={game} playerId={user.uid} deck={deck ?? { cards: [], randomized: false }} phase={phase} />}
     {game.status !== 'ACTIVE' && <button className="button secondary" disabled={leaving} onClick={() => { if (!user) return; setLeaving(true); void leaveLobby(game.code, user.uid).then(() => navigate('/', { replace: true })).catch(() => { setLeaving(false); setError('Impossibile uscire dalla lobby.') }) }}>{leaving ? 'Uscita…' : 'Esci dalla partita'}</button>}
     {game.status === 'ACTIVE' && <Link className="button secondary" to="/">Dashboard</Link>}

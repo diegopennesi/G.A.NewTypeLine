@@ -118,10 +118,23 @@ service cloud.firestore {
       ((before.playerOneId == uid && !before.playerOneReady && after.playerOneReady) ||
        (before.playerTwoId == uid && !before.playerTwoReady && after.playerTwoReady));
     }
+    function matchingPreset(ref, kind, cards) {
+     let preset = get(/databases/$(database)/documents/accounts/$(uid)/presets/$(ref.id)).data;
+     return ref.keys().hasOnly(['id','name']) && ref.name == preset.name &&
+      kind == preset.kind && cards.toSet() == preset.cards.toSet();
+    }
+    function validSnapshot(d) {
+     let game = getAfter(matchDocument(code)).data;
+     return d.keys().hasOnly(['cards','squad','squadPreset','deckPreset']) &&
+      validTacticsDeck({'cards': d.cards}) &&
+      d.cards == get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards &&
+      d.squad == (game.playerOneId == uid ? game.playerOneSquad : game.playerTwoSquad) &&
+      (d.squadPreset == null || matchingPreset(d.squadPreset, 'squad', d.squad)) &&
+      (d.deckPreset == null || matchingPreset(d.deckPreset, 'deck', d.cards));
+    }
     allow read: if ownsAccount();
     allow create, update: if ownsAccount() && confirmsOwnSquad() &&
-     validTacticsDeck(request.resource.data) &&
-     request.resource.data == {'cards': get(/databases/$(database)/documents/games/$(code)/tacticsDecks/$(uid)).data.cards};
+     validSnapshot(request.resource.data);
    }
    match /presets/{presetId} {
     allow read, delete: if ownsAccount();
