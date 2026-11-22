@@ -87,9 +87,10 @@ service cloud.firestore {
    allow get: if ownsAccount();
    allow create, update: if ownsAccount() &&
     request.resource.data.keys().hasOnly(['avatar']) &&
-    (request.resource.data.avatar == null || (request.resource.data.avatar is string &&
-     request.resource.data.avatar.size() <= 45000 &&
-     request.resource.data.avatar.matches('^data:image/webp;base64,[A-Za-z0-9+/=]+$')));
+    (request.resource.data.avatar == null || request.resource.data.avatar in [
+      'young-male', 'young-female', 'aggressive-male', 'aggressive-female',
+      'veteran-male', 'veteran-female', 'robot-male', 'robot-female', 'mystery'
+    ]);
    match /presets/{presetId} {
     allow read, delete: if ownsAccount();
     allow create, update: if ownsAccount() && validPreset(request.resource.data);
