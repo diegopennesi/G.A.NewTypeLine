@@ -211,18 +211,33 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .player-list p { position: relative; isolation: isolate; overflow: hidden; align-content: center; min-width: 0; }
 .player-list p[data-portrait="true"] { padding-right: 2.5rem; }
 .player-list p > b { overflow-wrap: anywhere; }
-.player-list p > :is(img, i) { position: absolute; z-index: -1; inset: 0 0 0 auto; height: 100%; width: 4rem; object-fit: cover; object-position: center 38%; mask-image: linear-gradient(90deg, transparent, #000 48%); }
+.player-list p > :is(img, i) { position: absolute; z-index: -1; inset: 0 0 0 auto; height: 100%; width: 4rem; object-fit: cover; object-position: center 38%; mask-image: linear-gradient(90deg, transparent, #000 29%); }
 .player-list p > i { display: grid; place-items: center; background: #121725; color: #fff; font-size: 1.5rem; font-style: normal; }
 .victory-total > b { min-width: 0; overflow-wrap: anywhere; }
 
-.unit-portrait { display: block; position: absolute; overflow: hidden; pointer-events: none; }
-.unit-portrait img { position: absolute; top: 50%; left: 50%; width: auto; max-width: none; height: 370%; transform: translate(calc(-1 * var(--portrait-x)), calc(-1 * var(--portrait-y))); }
+.card-artwork { display: block; position: absolute; overflow: hidden; pointer-events: none; }
+.card-artwork img { position: absolute; top: 50%; left: 50%; width: auto; max-width: none; height: 370%; transform: translate(calc(-1 * var(--portrait-x)), calc(-1 * var(--portrait-y))); }
 .timeline-unit { position: relative; isolation: isolate; overflow: hidden; }
 .timeline-unit-red { --unit-border: #ff9b89; }
 .timeline-unit-blue { --unit-border: #9dbdff; }
 .timeline-unit.timeline-unit-red, .timeline-unit.timeline-unit-blue { border-color: var(--unit-border); }
-.timeline-unit > .unit-portrait { z-index: -1; inset: 0 0 0 auto; width: min(75%, 5.25rem); opacity: .65; mask-image: linear-gradient(90deg, transparent, #000 70%); }
+.timeline-unit > .card-artwork,
+.card-selection-row > .card-artwork,
+.tactics-illustrated > .card-artwork {
+  z-index: -1;
+  inset: 0 0 0 auto;
+  width: 70%;
+  mask-image: linear-gradient(90deg, transparent, #000 28.57%);
+}
+.timeline-unit > .card-artwork { opacity: .88; }
+.card-selection-row, .tactics-illustrated { position: relative; isolation: isolate; overflow: hidden; }
+.card-selection-row > .card-artwork, .tactics-illustrated > .card-artwork { opacity: .5; }
+.card-selection-text, .tactics-illustrated { text-shadow: 0 1px 3px #000, 0 0 4px #000; }
+.card-selection-check { z-index: 0; }
+.tactics-controls > .tactics-illustrated { flex: 0 1 13rem; text-align: left; }
+.card-artwork[data-tactic] img, .card-selection-row > .card-artwork img { min-width: 100%; height: auto; min-height: 250%; object-fit: cover; }
 .timeline-unit-label { display: grid; text-shadow: 0 1px 3px #000, 0 0 5px #000; }
 .timeline-hud-readout { position: relative; isolation: isolate; }
-.timeline-hud-readout > .unit-portrait { z-index: -1; inset: -.45rem 8% -.45rem auto; width: min(43%, 11rem); opacity: .68; mask-image: linear-gradient(90deg, transparent, #000 35%, #000 63%, transparent); }
+.timeline-hud-readout > .card-artwork { z-index: -1; inset: -.45rem 0 -.45rem auto; width: min(64%, 32rem); opacity: .82; mask-image: linear-gradient(90deg, transparent, #000 24%, #000 77%, transparent); }
 .timeline-hud-unit > strong, .timeline-hud-unit > span { text-shadow: 0 1px 4px #101218; }
+.timeline-hud-readout > .card-artwork img { left: 36%; min-width: 105%; height: auto; min-height: 330%; object-fit: cover; }

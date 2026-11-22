@@ -1,4 +1,4 @@
-import { UnitPortrait } from '../components/UnitPortrait'
+import { CardArtwork } from '../components/CardArtwork'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
 import { allTacticsCards, canPlayTacticsCard, reactionTimings, type ReactionTiming, type TacticsCard } from '../data/tacticsCards'
@@ -170,7 +170,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </div>}
     {slotUnits.map(unit => {
       const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
-      const text = <><UnitPortrait unitId={unit.id} /><span className="timeline-unit-label">{label(unit.id)}{unit.reserve && <small>Riserva</small>}</span></>
+      const text = <><CardArtwork cardId={unit.id} /><span className="timeline-unit-label">{label(unit.id)}{unit.reserve && <small>Riserva</small>}</span></>
       if (canPay && unit.key === current?.key) {
         return <span className={`${className} timeline-drag-unit`} key={unit.key}
           onPointerDown={startDrag} onPointerMove={moveDrag}
@@ -196,7 +196,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     <h2 id="manual-timeline-title">Timeline</h2>
     <div className="timeline-instructions timeline-hud" data-team={turnTeam}>
       <div className="timeline-hud-readout" aria-live="polite">
-        {!completed && turnUnit && <UnitPortrait unitId={turnUnit.id} />}
+        {!completed && turnUnit && <CardArtwork cardId={turnUnit.id} />}
         <div className="timeline-hud-unit">
           <span className="timeline-hud-status"><i aria-hidden="true" />{turnStatus}</span>
           {turnUnit && !completed && <strong>{label(turnUnit.id)}</strong>}
@@ -333,17 +333,19 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
         </form>
       </>}
     </details>}
-    {revealed && <div className="tactics-revealed" aria-live="polite">
+    {revealed && <div className="tactics-revealed tactics-illustrated" aria-live="polite">
+      <CardArtwork cardId={revealed.id} />
       <strong>{revealed.name} · Fase {revealed.phase}, TL {revealed.slot}</strong>
       <p>{revealed.text}</p>
     </div>}
     {deck.cards.length > 0 && <section className="tactics-hand" aria-labelledby="tactics-hand-title">
       <h3 id="tactics-hand-title">{deck.randomized ? 'Tactics Card pescate' : 'Il tuo mazzo tattico'} · {availableCards.length}/{drawn.length}</h3>
       <div className="tactics-controls">
-        {availableCards.map(card => <button key={card.id} type="button" className="button secondary"
+        {availableCards.map(card => <button key={card.id} type="button" className="button secondary tactics-illustrated"
           aria-pressed={selectedTactic === card.id} disabled={saving || !ownPlays || !playable(card)}
           onClick={() => setSelectedTactic(selectedTactic === card.id ? null : card.id)}>
-          {card.name}{card.response ? ' · Response' : card.cost ? ` · ${card.cost} TL` : ''}
+          <CardArtwork cardId={card.id} />
+          <span>{card.name}{card.response ? ' · Response' : card.cost ? ` · ${card.cost} TL` : ''}</span>
         </button>)}
         <button type="button" className="button revert-button" disabled={saving || !lastPlay}
           aria-label="Revert, annulla l’ultima Tactics Card giocata"
@@ -351,7 +353,8 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
           Revert
         </button>
       </div>
-      {tactic && current && playable(tactic) && <div className="tactics-revealed">
+      {tactic && current && playable(tactic) && <div className="tactics-revealed tactics-illustrated">
+        <CardArtwork cardId={tactic.id} />
         <p>{tactic.text}</p>
         <button className="button" type="button" disabled={saving}
           onClick={() => void run(async () => {
