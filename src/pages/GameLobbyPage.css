@@ -211,12 +211,12 @@ button.timeline-unit[aria-pressed="true"], .manual-timeline :focus-visible { out
 .player-list p { position: relative; isolation: isolate; overflow: hidden; align-content: center; min-width: 0; }
 .player-list p[data-portrait="true"] { padding-right: 2.5rem; }
 .player-list p > b { overflow-wrap: anywhere; }
-.player-list p > :is(img, i) { position: absolute; z-index: -1; inset: 0 0 0 auto; height: 100%; width: 4rem; object-fit: cover; object-position: center 38%; mask-image: linear-gradient(90deg, transparent, #000 70%); }
+.player-list p > :is(img, i) { position: absolute; z-index: -1; inset: 0 0 0 auto; height: 100%; width: 4rem; object-fit: cover; object-position: center 38%; mask-image: linear-gradient(90deg, transparent, #000 48%); }
 .player-list p > i { display: grid; place-items: center; background: #121725; color: #fff; font-size: 1.5rem; font-style: normal; }
 .victory-total > b { min-width: 0; overflow-wrap: anywhere; }
 
 .unit-portrait { display: block; position: absolute; overflow: hidden; pointer-events: none; }
-.unit-portrait img { position: absolute; top: 50%; left: 50%; width: 440%; max-width: none; height: auto; transform: translate(calc(-1 * var(--portrait-x)), calc(-1 * var(--portrait-y))); }
+.unit-portrait img { position: absolute; top: 50%; left: 50%; width: auto; max-width: none; height: 370%; transform: translate(calc(-1 * var(--portrait-x)), calc(-1 * var(--portrait-y))); }
 .timeline-unit { position: relative; isolation: isolate; overflow: hidden; }
 .timeline-unit-red { --unit-border: #ff9b89; }
 .timeline-unit-blue { --unit-border: #9dbdff; }
