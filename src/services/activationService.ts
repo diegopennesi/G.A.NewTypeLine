@@ -1,6 +1,6 @@
 import { doc, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { applyTimelineAction, initialActivation, reachedSecondPhase, type TimelineAction } from '../models/activation'
-import type { Game } from '../models/game'
+import type { Game, MatchResult } from '../models/game'
 import { getFirestoreService } from './firestoreService'
 
 export async function changeActivation(code: string, uid: string, version: number, action: TimelineAction) {
@@ -21,7 +21,7 @@ export async function changeActivation(code: string, uid: string, version: numbe
   })
 }
 
-export async function finishMatch(code: string, uid: string) {
+export async function finishMatch(code: string, uid: string, result: MatchResult) {
   const db = getFirestoreService()
   const ref = doc(db, 'games', code)
   await runTransaction(db, async transaction => {
@@ -32,6 +32,6 @@ export async function finishMatch(code: string, uid: string) {
     if (game.status !== 'ACTIVE' || !state || state.current || state.reaction || state.units.some(unit => unit.time <= 20)) {
       throw new Error('Concludi entrambe le fasi prima di chiudere la partita.')
     }
-    transaction.update(ref, { status: 'FINISHED', finishedAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    transaction.update(ref, { status: 'FINISHED', result, finishedAt: serverTimestamp(), updatedAt: serverTimestamp() })
   })
 }
