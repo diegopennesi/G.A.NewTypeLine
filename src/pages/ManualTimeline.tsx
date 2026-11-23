@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react'
 import { CardArtwork } from '../components/CardArtwork'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { findUnitCard } from '../data/unitCards'
@@ -15,6 +16,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
   const [notice, setNotice] = useState('')
   const [delta, setDelta] = useState('')
   const drag = useRef<{ x: number; y: number; id: number } | null>(null)
+  const reducedMotion = useReducedMotion()
   const [layout, setLayout] = useState<'grid' | 'wheel'>('grid')
   const [wheelTime, setWheelTime] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<number | null>(null)
@@ -170,20 +172,22 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
     </div>}
     {slotUnits.map(unit => {
       const className = `timeline-unit timeline-unit-${team(unit.seat) === 'RED' ? 'red' : 'blue'}`
+      const layoutId = layout === 'grid' && !reducedMotion ? `${game.code}/${phase}/${unit.key}` : undefined
+      const transition = { layout: { type: 'spring', stiffness: 430, damping: 35 } } as const
       const text = <><CardArtwork cardId={unit.id} /><span className="timeline-unit-label">{label(unit.id)}{unit.reserve && <small>Riserva</small>}</span></>
       if (canPay && unit.key === current?.key) {
-        return <span className={`${className} timeline-drag-unit`} key={unit.key}
+        return <motion.span layoutId={layoutId} transition={transition} className={`${className} timeline-drag-unit`} key={unit.key}
           onPointerDown={startDrag} onPointerMove={moveDrag}
           onPointerUp={event => finishDrag(event, true)}
           onPointerCancel={event => finishDrag(event, false)}
-          onLostPointerCapture={event => finishDrag(event, false)}>{text}</span>
+          onLostPointerCapture={event => finishDrag(event, false)}>{text}</motion.span>
       }
       return !current && !completed && next.unit?.key === unit.key && unit.seat === seat
-        ? <button className={className} type="button" key={unit.key} disabled={saving}
+        ? <motion.button layoutId={layoutId} transition={transition} className={className} type="button" key={unit.key} disabled={saving}
             onClick={() => startUnit(unit.key)}>
             {text}<small>{unit.reserve ? 'Schiera e attiva' : 'Attiva'}</small>
-          </button>
-        : <span className={className} key={unit.key}>{text}</span>
+          </motion.button>
+        : <motion.span layoutId={layoutId} transition={transition} className={className} key={unit.key}>{text}</motion.span>
     })}
     </>
   }
@@ -242,7 +246,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
       <button type="button" aria-pressed={layout === 'grid'} onClick={() => setLayout('grid')}>Griglia</button>
       <button type="button" aria-pressed={layout === 'wheel'} onClick={() => setLayout('wheel')}>Circolare</button>
     </div>
-    {layout === 'grid' ? <div className="timeline-scroll" role="region" aria-label={`Caselle Timeline · fase ${phase}`} tabIndex={0}>
+    {layout === 'grid' ? <motion.div layoutScroll className="timeline-scroll" role="region" aria-label={`Caselle Timeline · fase ${phase}`} tabIndex={0}>
       {[phaseSlots.slice(0, 5), phaseSlots.slice(5)].map(row =>
         <ol key={row[0].slot} start={row[0].slot} className="timeline-grid"
           style={{ '--timeline-mobile-columns': row.map(item => item.slotUnits.length > 0
@@ -251,7 +255,7 @@ export function ManualTimeline({ game, playerId, deck, phase }: { game: Game; pl
             data-timeline-time={item.time} data-drop-target={dropTarget === item.time || undefined}
             aria-current={item.time === round ? 'step' : undefined}>{renderSlot(item)}</li>)}
         </ol>)}
-    </div> : <div className="timeline-wheel-view">
+    </motion.div> : <div className="timeline-wheel-view">
       <div className="timeline-wheel" role="group" aria-label={`Timeline circolare · fase ${phase}`}>
         {phaseSlots.map(item => {
           const angle = (item.slot - 1) * Math.PI / 5
